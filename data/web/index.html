@@ -51,47 +51,7 @@
     <script src="underscore-min.js"></script>
     <script src="raphael-min.js"></script>
     <script src="sequence-diagram-min.js"></script>
-
-    <script type="text/javascript">
-
-      function runme(diagram_div) {
-
-        var data = "You->Me: Client Hello \n \
-Note right of Me: bla \n \
-Me->You: Server Hello \n \
-Note right of Me: blubb \n \
-Me->You: Certificate \n \
-Note right of Me: blablubb \n \
-Me->You: Server Hello Done \n \
-You->Me: Client Key Exchange \n \
-You->Me: Change Cipher Spec \n \
-You-->Me: Finished \n \
-Me->You: Change Cipher Spec \n \
-Me-->You: Finished \n \
-You-->Me: Application Data: GET / \n \
-Me-->You: Application Data: This site"
-
-        on_change();
-
-        function on_change() {
-          var diagram = Diagram.parse(data);
-
-          var options = {
-            theme: 'hand',
-            scale: 1
-          };
-
-          diagram_div.innerHTML='';
-
-          // Draw
-          diagram.drawSVG(diagram_div, options);
-        }
-      }
-
-      function initialise () {
-        runme(document.getElementById('diagram'))
-      };
-    </script>
-  <script>window.onload = initialise</script>
+    <script src="gui.js"></script>
+    <script>window.onload = initialise</script>
   </body>
 </html>
