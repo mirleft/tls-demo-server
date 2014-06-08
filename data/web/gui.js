@@ -1,22 +1,37 @@
 
+function msg (diagram, from, to, text, secret, ev1, tt) {
+    var typ = secret ? Diagram.LINETYPE.DOTTED : Diagram.LINETYPE.SOLID;
+    return new Diagram.Signal(from, typ | (Diagram.ARROWTYPE.FILLED << 2), to, text, ev1, tt)
+}
+
 function runme(diagram_div) {
 
-    var data = "You->Me: Client Hello \n \
-Note right of Me: bla \n \
-Me->You: Server Hello \n \
-Note right of Me: blubb \n \
-Me->You: Certificate \n \
-Note right of Me: blablubb \n \
-Me->You: Server Hello Done \n \
-You->Me: Client Key Exchange \n \
-You->Me: Change Cipher Spec \n \
-You-->Me: Finished \n \
-Me->You: Change Cipher Spec \n \
-Me-->You: Finished \n \
-You-->Me: Application Data: GET / \n \
-Me-->You: Application Data: This site"
+    var diagram = new Diagram();
 
-    var diagram = Diagram.parse(data);
+    var you = diagram.getActor('You');
+    var me = diagram.getActor('Me');
+
+    var tt = "tooltip here";
+    var ev1y = function () { console.log("clicked you") }
+    var ev1m = function () { console.log("clicked me") }
+
+    var msgs = [ [ you, me, 'Client Hello', false, ev1y ] ,
+                 [ me, you, 'Server Hello', false, ev1m ] ,
+                 [ me, you, 'Certificate', false, ev1m ] ,
+                 [ me, you, 'Server Hello Done', false, ev1m ] ,
+                 [ you, me, 'Client Key Exchange', false, ev1y ] ,
+                 [ you, me, 'Change Cipher Spec', false, ev1y ],
+                 [ you, me, 'Finished', true, ev1y ],
+                 [ me, you, 'Change Cipher Spec', false, ev1m ],
+                 [ me, you, 'Finished', true, ev1m ],
+                 [ you, me, 'AD: GET /', true, ev1y ],
+                 [ me, you, 'AD: this site', true, ev1m ] ];
+
+    for (var i = 0 ; i < msgs.length ; i++) {
+        var m = msgs[i];
+        var sig = msg(diagram, m[0], m[1], m[2], m[3], m[4], tt)
+        diagram.addSignal(sig);
+    }
 
     var options = {
         theme: 'hand',
