@@ -14,15 +14,16 @@ function runme(diagram_div) {
     var tt = "tooltip here";
     var ev1y = function () { console.log("clicked you") }
     var ev1m = function () { console.log("clicked me") }
+    var evn = function () { console.log("clicked note") }
     var right = Diagram.PLACEMENT.RIGHTOF;
     var left = Diagram.PLACEMENT.LEFTOF;
 
     var msgs = [ [ 'msg', you, me, 'Client Hello', false, ev1y ] ,
-                 [ 'note', me, 'bla',  right ],
+                 [ 'note', me, 'bla',  right, evn ],
                  [ 'msg', me, you, 'Server Hello', false, ev1m ] ,
-                 [ 'note', me, 'blubb', right ],
+                 [ 'note', me, 'blubb', right, evn ],
                  [ 'msg', me, you, 'Certificate', false, ev1m ] ,
-                 [ 'note', me, 'blablubb', right ],
+                 [ 'note', me, 'blablubb', right, evn ],
                  [ 'msg', me, you, 'Server Hello Done', false, ev1m ] ,
                  [ 'msg', you, me, 'Client Key Exchange', false, ev1y ] ,
                  [ 'msg', you, me, 'Change Cipher Spec', false, ev1y ],
@@ -39,7 +40,7 @@ function runme(diagram_div) {
             var sig = msg(m[1], m[2], m[3], m[4], m[5], tt)
             diagram.addSignal(sig);
         } else if (typ == 'note') {
-            var not = new Diagram.Note(m[1], m[3], m[2]);
+            var not = new Diagram.Note(m[1], m[3], m[2], m[4], tt);
             diagram.addSignal(not)
         } else {
             console.log("unknown msg")
