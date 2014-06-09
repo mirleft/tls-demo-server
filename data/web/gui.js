@@ -19,20 +19,12 @@ function lookupchap (msg) {
     }
 }
 
-function clear_element (element) {
-    while (element.hasChildNodes())
-        element.removeChild(element.firstChild)
-}
-
-function rfc_cb (div, msg, data) {
+function rfc_cb (pre, msg, data) {
     var chap = lookupchap(msg);
     return function () {
-        clear_element(div);
         $('.rfc-chapter').hide() ;
         $(chap).show('slow');
-        var pre = document.createElement("pre");
         pre.innerHTML = data;
-        div.appendChild(pre);
     }
 }
 
@@ -41,7 +33,7 @@ function handle_sec (from, msg) {
         from.secure = true
 }
 
-function process (diagram, details_div, in_record) {
+function process (diagram, details_pre, in_record) {
     var me = diagram.getActor('Me');
     var txt = in_record.message;
     if (in_record.event == 'message') {
@@ -52,7 +44,7 @@ function process (diagram, details_div, in_record) {
         if (in_record.direction == 'in') {
             from = you ; to = me ;
         }
-        var cb = rfc_cb(details_div, txt, in_record.data);
+        var cb = rfc_cb(details_pre, txt, in_record.data);
         var sig = msg(from, to, txt, cb);
         handle_sec(from, txt);
         diagram.addSignal(sig);
@@ -63,36 +55,12 @@ function process (diagram, details_div, in_record) {
     }
 }
 
-function runme(diagram_div, details_div) {
-    $('.chapter-NONE').show();
-
-
-    $.ajax({ url: "/diagram.txt" }).done( function( data ) {
-        console.log( "initially received data:", data.length );
-    });
-
-    var req = document.getElementById("request")
-    request.onclick = function () {
-        $.ajax({ url: "/rekey" })
-    }
-
-    var up = document.getElementById("update")
-    up.onclick = function () {
-        $.ajax({ url: "/diagram.txt" }).done( function( data ) {
-            console.log( "received data:", data.length );
-        });
-    }
-
-    var diagram = new Diagram();
-
-    var you = diagram.getActor('You');
-    var me = diagram.getActor('Me');
-
-    var tt = "tooltip here";
-
-    var evn = function () { console.log("clicked note") }
-
-    var msgs = [ { "event": "message", "message": "Client Hello", "direction": "in", "data": "version: TLS_1_2\nciphersuites: A, B, C, D\nrandom: 00112233445566778899001122334455\n\t66778899001122334455667788990011" },
+function getData (diagram_div, details_pre) {
+  $.ajax({ url: "/diagram.txt" }).done( function( data ) {
+      console.log( "received data:", data.length );
+      var diagram = new Diagram();
+      diagram.getActor('You'); diagram.getActor('Me');
+      var msgs = [ { "event": "message", "message": "Client Hello", "direction": "in", "data": "version: TLS_1_2\nciphersuites: A, B, C, D\nrandom: 00112233445566778899001122334455\n\t66778899001122334455667788990011" },
                  { "event": "note",    "message": "bla" },
                  { "event": "message", "message": "Server Hello", "direction": "out" },
                  { "event": "note",    "message": "blubb" },
@@ -106,22 +74,36 @@ function runme(diagram_div, details_div) {
                  { "event": "message", "message": "Finished", "direction": "out" },
                  { "event": "message", "message": "AD: GET /", "direction": "in" },
                  { "event": "message", "message": "AD: this site", "direction": "out" } ]
+      for (var i = 0 ; i < msgs.length ; i++) {
+          process(diagram, details_pre, msgs[i]);
+      }
+      var options = {
+          theme: 'hand',
+          scale: 1.2
+      };
 
-    for (var i = 0 ; i < msgs.length ; i++) {
-        process(diagram, details_div, msgs[i]);
-    }
+      diagram_div.innerHTML='';
+      details_pre.innerHTML='';
+      $('.rfc-chapter').hide() ;
+      $('.chapter-NONE').show();
 
-    var options = {
-        theme: 'hand',
-        scale: 1.2
-    };
-
-    diagram_div.innerHTML='';
-
-    // Draw
-    diagram.drawSVG(diagram_div, options);
+      // Draw
+      diagram.drawSVG(diagram_div, options);
+  });
 }
 
 function initialise () {
-    runme(document.getElementById('diagram'), document.getElementById('details'))
-};
+    $('.chapter-NONE').show();
+
+    var diagram_div = document.getElementById('diagram');
+    var details_pre = document.getElementById('details-pre');
+
+    getData(diagram_div, details_pre);
+
+    var req = document.getElementById("request")
+    request.onclick = function () {
+        $.ajax({ url: "/rekey" }).done( function () {
+            setTimeout(function () { return getData(diagram_div, details_pre); }, 1000)
+        })
+    }
+}
