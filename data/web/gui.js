@@ -1,6 +1,6 @@
 
-function msg (from, to, text, secret, ev1, tt) {
-    var typ = secret ? Diagram.LINETYPE.SOLID : Diagram.LINETYPE.DOTTED;
+function msg (from, to, text, ev1, tt) {
+    var typ = from.secure ? Diagram.LINETYPE.SOLID : Diagram.LINETYPE.DOTTED;
     return new Diagram.Signal(from, typ | (Diagram.ARROWTYPE.FILLED << 2), to, text, ev1, tt)
 }
 
@@ -25,6 +25,11 @@ function rfc_cb (msg) {
         $('.rfc-chapter').hide() ;
         $(chap).show('slow');
     }
+}
+
+function handle_sec (from, msg) {
+    if (msg == 'Change Cipher Spec')
+        from.secure = true
 }
 
 function process (diagram, in_record) {
@@ -66,27 +71,28 @@ function runme(diagram_div) {
     var right = Diagram.PLACEMENT.RIGHTOF;
     var left = Diagram.PLACEMENT.LEFTOF;
 
-    var msgs = [ [ 'msg', you, me, 'Client Hello', false ] ,
+    var msgs = [ [ 'msg', you, me, 'Client Hello' ] ,
                  [ 'note', me, 'bla',  right, evn ],
-                 [ 'msg', me, you, 'Server Hello', false ] ,
+                 [ 'msg', me, you, 'Server Hello' ] ,
                  [ 'note', me, 'blubb', right, evn ],
-                 [ 'msg', me, you, 'Certificate', false ] ,
+                 [ 'msg', me, you, 'Certificate' ] ,
                  [ 'note', me, 'blablubb\nblabla', right, evn ],
-                 [ 'msg', me, you, 'Server Hello Done', false ] ,
-                 [ 'msg', you, me, 'Client Key Exchange', false ] ,
-                 [ 'msg', you, me, 'Change Cipher Spec', false ],
-                 [ 'msg', you, me, 'Finished', true ],
-                 [ 'msg', me, you, 'Change Cipher Spec', false ],
-                 [ 'msg', me, you, 'Finished', true ],
-                 [ 'msg', you, me, 'AD: GET /', true ],
-                 [ 'msg', me, you, 'AD: this site', true ] ];
+                 [ 'msg', me, you, 'Server Hello Done' ] ,
+                 [ 'msg', you, me, 'Client Key Exchange' ] ,
+                 [ 'msg', you, me, 'Change Cipher Spec' ],
+                 [ 'msg', you, me, 'Finished' ],
+                 [ 'msg', me, you, 'Change Cipher Spec' ],
+                 [ 'msg', me, you, 'Finished' ],
+                 [ 'msg', you, me, 'AD: GET /' ],
+                 [ 'msg', me, you, 'AD: this site' ] ];
 
     for (var i = 0 ; i < msgs.length ; i++) {
         var m = msgs[i];
         var typ = m[0];
         if (typ == 'msg') {
             var cb = rfc_cb(m[3]);
-            var sig = msg(m[1], m[2], m[3], m[4], cb)
+            var sig = msg(m[1], m[2], m[3], cb)
+            handle_sec(m[1], m[3]);
             diagram.addSignal(sig);
         } else if (typ == 'note') {
             var not = new Diagram.Note(m[1], m[3], m[2], m[4], tt);
