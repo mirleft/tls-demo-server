@@ -52,16 +52,20 @@ struct
       | _ -> "text/plain"
     with _ -> "text/plain"
 
-  let dispatch kv path trace =
+  let response path =
     let header =
       let ct = content_type path in
       let h = Cohttp.Header.init_with "Content-type" ct in
       Cohttp.Header.add h "Connection" "Keep-Alive"
     in
-    let resp = Http.Response.make ~status:`OK ~headers:header () in
+    Http.Response.make ~status:`OK ~headers:header ()
+
+  let dispatch kv path trace =
+    let resp = response path in
     try_lwt
       lwt data = match path with
                  | "/diagram.json" -> return (String.concat "\n" (trace ()))
+                 | "/diagram.txt"  -> return (String.concat "\n" (trace ()))
                  | s               -> read_kv kv s
       in
       return (resp, (Body.of_string data))
