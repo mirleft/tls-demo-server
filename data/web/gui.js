@@ -16,7 +16,7 @@ function runme(diagram_div) {
         return function () {
             console.log("hiding rfc chapter, showing now: ", chap);
             $('.rfc-chapter').hide() ;
-            $(chap).show();
+            $(chap).show('slow');
         }
     }
     var evn = function () { console.log("clicked note") }
