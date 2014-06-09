@@ -2,6 +2,15 @@
 open Lwt
 open V1_LWT
 
+let make_tracer _ =
+  let traces = ref [] in
+  let trace sexp =
+    traces := Sexplib.Sexp.to_string_hum sexp :: !traces
+  and get _ =
+    List.rev !traces
+  in
+  (trace, get)
+
 module Main (C  : CONSOLE)
             (S  : STACKV4)
             (KV : KV_RO) =
@@ -43,7 +52,7 @@ struct
       | _ -> "text/plain"
     with _ -> "text/plain"
 
-  let dispatch kv path =
+  let dispatch kv path trace =
     let header =
       let ct = content_type path in
       let h = Cohttp.Header.init_with "Content-type" ct in
@@ -52,7 +61,7 @@ struct
     let resp = Http.Response.make ~status:`OK ~headers:header () in
     try_lwt
       lwt data = match path with
-                 | "/diagram.json" -> return (diagram ())
+                 | "/diagram.json" -> return (String.concat "\n" (trace ()))
                  | s               -> read_kv kv s
       in
       return (resp, (Body.of_string data))
@@ -60,18 +69,19 @@ struct
       return (Http.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
-  let handle c kv conn req body =
+  let handle c kv trace conn req body =
     let path = Uri.path req.Http.Request.uri in
     match path with
-    | "/"             -> dispatch kv "/index.html"
-    | s               -> dispatch kv s
+    | "/"             -> dispatch kv "/index.html" trace
+    | s               -> dispatch kv s trace
 
   let upgrade c conf kv tcp =
-    TLS.server_of_tcp_flow conf tcp >>= function
+    let (trace, get_trace) = make_tracer () in
+    TLS.server_of_tcp_flow ~trace conf tcp >>= function
       | `Error _ -> fail (Failure "tls init")
       | `Ok tls  ->
           let open Http.Server in
-          listen { callback = handle c kv ; conn_closed = fun _ () -> () } tls
+          listen { callback = handle c kv get_trace ; conn_closed = fun _ () -> () } tls
 
   let start c stack kv =
     lwt cert = X509.certificate kv `Default in
