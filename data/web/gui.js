@@ -42,7 +42,7 @@ function runme(diagram_div) {
         var m = msgs[i];
         var typ = m[0];
         if (typ == 'msg') {
-            var sig = msg(m[1], m[2], m[3], m[4], m[5], tt)
+            var sig = msg(m[1], m[2], m[3], m[4], m[5])
             diagram.addSignal(sig);
         } else if (typ == 'note') {
             var not = new Diagram.Note(m[1], m[3], m[2], m[4], tt);
