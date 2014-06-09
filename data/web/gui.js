@@ -54,7 +54,7 @@ function runme(diagram_div) {
 
     var options = {
         theme: 'hand',
-        scale: 1
+        scale: 1.2
     };
 
     diagram_div.innerHTML='';
