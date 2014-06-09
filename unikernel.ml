@@ -78,7 +78,7 @@ struct
     | s               -> dispatch kv s trace
 
   let upgrade c conf kv tcp =
-    let (trace, get_trace) = make_tracer () in
+    let trace, get_trace = make_tracer () in
     TLS.server_of_tcp_flow ~trace conf tcp >>= function
       | `Error _ -> fail (Failure "tls init")
       | `Ok tls  ->
