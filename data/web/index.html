@@ -11,7 +11,7 @@
 
   <body>
     <header>
-      <div class="inner">
+      <div class="center">
         <h1>OCaml-TLS demo Server</h1>
       </div>
     </header>
@@ -26,6 +26,7 @@
       <section id="demo">
         <h3>Showtime</h3>
         <div id="rfc">
+          <para class="rfc-chapter chapter-NONE"><pre>Click inside the diagram!</pre></para>
           <para class="rfc-chapter chapter-7-1"><pre>7.1.  Change Cipher Spec Protocol
 
    The change cipher spec protocol exists to signal transitions in
@@ -652,21 +653,16 @@
    layer.</pre></para>
         </div>
         <div id="diagram">This should be a diagram! If you don't see it you need Javascript enabled</div>
+        <div id="details">
+          <para class="data-NONE"><pre>Intentionally left blank!</pre></para>
+        </div>
       </section>
+    </div>
 
-      <section id="disclaimer">
-        <h3>Disclaimer</h3>
-        <p>This demonstration uses <a href="https://github.com/bramp/js-sequence-diagrams">js-sequence-diagrams</a>, which depends on <a href="http://raphaeljs.com/">Raphaël</a> and <a href="http://underscorejs.org/">Underscore.js</a>.</p>
-      </section>
-      </div>
-
-    <footer>
-      <hr />
-      <div class="inner">
-        Running with <a href="https://github.com/mirage/ocaml-cohttp">cohttp</a> on <a href="http://www.openmirage.org">mirage</a>. Please report any issues to <a href="https://github.com/mirleft/ocaml-tls/issues">GitHub issue tracker</a>.
-      </div>
+    <footer class="site-footer">
+        This demo runs on <a href="https://github.com/mirage/ocaml-cohttp">cohttp</a>, which runs on <a href="http://www.openmirage.org">mirage</a>. Please report any issues to <a href="https://github.com/mirleft/ocaml-tls/issues">GitHub issue tracker</a>.
+        We use <a href="http://jquery.com">jquery</a> and <a href="https://github.com/bramp/js-sequence-diagrams">js-sequence-diagrams</a>, which depends on <a href="http://raphaeljs.com/">Raphaël</a> and <a href="http://underscorejs.org/">Underscore.js</a>.
     </footer>
-
     <script src="jquery-1.11.1.min.js"></script>
     <script src="underscore-min.js"></script>
     <script src="raphael-min.js"></script>

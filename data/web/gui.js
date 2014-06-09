@@ -5,6 +5,7 @@ function msg (from, to, text, secret, ev1, tt) {
 }
 
 function runme(diagram_div) {
+    $('.chapter-NONE').show();
 
     var diagram = new Diagram();
 
@@ -14,7 +15,6 @@ function runme(diagram_div) {
     var tt = "tooltip here";
     var rfc_cb = function (chap) {
         return function () {
-            console.log("hiding rfc chapter, showing now: ", chap);
             $('.rfc-chapter').hide() ;
             $(chap).show('slow');
         }
