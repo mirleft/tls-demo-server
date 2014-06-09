@@ -19,11 +19,20 @@ function lookupchap (msg) {
     }
 }
 
-function rfc_cb (msg) {
+function clear_element (element) {
+    while (element.hasChildNodes())
+        element.removeChild(element.firstChild)
+}
+
+function rfc_cb (div, msg, data) {
     var chap = lookupchap(msg);
     return function () {
+        clear_element(div);
         $('.rfc-chapter').hide() ;
         $(chap).show('slow');
+        var pre = document.createElement("pre");
+        pre.innerHTML = data;
+        div.appendChild(pre);
     }
 }
 
@@ -32,7 +41,7 @@ function handle_sec (from, msg) {
         from.secure = true
 }
 
-function process (diagram, in_record) {
+function process (diagram, details_div, in_record) {
     var me = diagram.getActor('Me');
     var txt = in_record.message;
     if (in_record.event == 'message') {
@@ -43,7 +52,8 @@ function process (diagram, in_record) {
         if (in_record.direction == 'in') {
             from = you ; to = me ;
         }
-        var sig = msg(from, to, txt, rfc_cb(txt));
+        var cb = rfc_cb(details_div, txt, in_record.data);
+        var sig = msg(from, to, txt, cb);
         handle_sec(from, txt);
         diagram.addSignal(sig);
     } else {
@@ -53,7 +63,7 @@ function process (diagram, in_record) {
     }
 }
 
-function runme(diagram_div) {
+function runme(diagram_div, details_div) {
     $('.chapter-NONE').show();
 
 
@@ -82,7 +92,7 @@ function runme(diagram_div) {
 
     var evn = function () { console.log("clicked note") }
 
-    var msgs = [ { "event": "message", "message": "Client Hello", "direction": "in" },
+    var msgs = [ { "event": "message", "message": "Client Hello", "direction": "in", "data": "version: TLS_1_2\nciphersuites: A, B, C, D\nrandom: 00112233445566778899001122334455\n\t66778899001122334455667788990011" },
                  { "event": "note",    "message": "bla" },
                  { "event": "message", "message": "Server Hello", "direction": "out" },
                  { "event": "note",    "message": "blubb" },
@@ -98,7 +108,7 @@ function runme(diagram_div) {
                  { "event": "message", "message": "AD: this site", "direction": "out" } ]
 
     for (var i = 0 ; i < msgs.length ; i++) {
-        process(diagram, msgs[i]);
+        process(diagram, details_div, msgs[i]);
     }
 
     var options = {
@@ -113,5 +123,5 @@ function runme(diagram_div) {
 }
 
 function initialise () {
-    runme(document.getElementById('diagram'))
+    runme(document.getElementById('diagram'), document.getElementById('details'))
 };
