@@ -33,6 +33,8 @@ function handle_sec (from, msg) {
         from.secure = true
 }
 
+var updating = false;
+
 function process (diagram, details_pre, in_record) {
     var me = diagram.getActor('Me');
     var txt = in_record.message;
@@ -89,6 +91,7 @@ function getData (diagram_div, details_pre) {
 
       // Draw
       diagram.drawSVG(diagram_div, options);
+      updating = false;
   });
 }
 
@@ -102,8 +105,11 @@ function initialise () {
 
     var req = document.getElementById("request")
     request.onclick = function () {
-        $.ajax({ url: "/rekey" }).done( function () {
-            setTimeout(function () { return getData(diagram_div, details_pre); }, 1000)
-        })
+        if (! updating) {
+            updating = true;
+            $.ajax({ url: "/rekey" }).done( function () {
+                setTimeout(function () { return getData(diagram_div, details_pre); }, 1000)
+            })
+        }
     }
 }
