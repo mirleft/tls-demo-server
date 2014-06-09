@@ -99,3 +99,17 @@ header h2 {
 .center {
   text-align: center;
 }
+
+#rfc{
+    float:left;
+    width:40%;
+}
+
+.rfc-chapter {
+    display: none;
+    font-size: 9px;
+}
+
+#diagram{
+    margin-left: 40%;
+}

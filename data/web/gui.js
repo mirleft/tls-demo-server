@@ -12,26 +12,31 @@ function runme(diagram_div) {
     var me = diagram.getActor('Me');
 
     var tt = "tooltip here";
-    var ev1y = function () { console.log("clicked you") }
-    var ev1m = function () { console.log("clicked me") }
+    var rfc_cb = function (chap) {
+        return function () {
+            console.log("hiding rfc chapter, showing now: ", chap);
+            $('.rfc-chapter').hide() ;
+            $(chap).show();
+        }
+    }
     var evn = function () { console.log("clicked note") }
     var right = Diagram.PLACEMENT.RIGHTOF;
     var left = Diagram.PLACEMENT.LEFTOF;
 
-    var msgs = [ [ 'msg', you, me, 'Client Hello', false, ev1y ] ,
+    var msgs = [ [ 'msg', you, me, 'Client Hello', false, rfc_cb('.chapter-7-4-1-2') ] ,
                  [ 'note', me, 'bla',  right, evn ],
-                 [ 'msg', me, you, 'Server Hello', false, ev1m ] ,
+                 [ 'msg', me, you, 'Server Hello', false, rfc_cb('.chapter-7-4-1-3') ] ,
                  [ 'note', me, 'blubb', right, evn ],
-                 [ 'msg', me, you, 'Certificate', false, ev1m ] ,
-                 [ 'note', me, 'blablubb', right, evn ],
-                 [ 'msg', me, you, 'Server Hello Done', false, ev1m ] ,
-                 [ 'msg', you, me, 'Client Key Exchange', false, ev1y ] ,
-                 [ 'msg', you, me, 'Change Cipher Spec', false, ev1y ],
-                 [ 'msg', you, me, 'Finished', true, ev1y ],
-                 [ 'msg', me, you, 'Change Cipher Spec', false, ev1m ],
-                 [ 'msg', me, you, 'Finished', true, ev1m ],
-                 [ 'msg', you, me, 'AD: GET /', true, ev1y ],
-                 [ 'msg', me, you, 'AD: this site', true, ev1m ] ];
+                 [ 'msg', me, you, 'Certificate', false, rfc_cb('.chapter-7-4-2') ] ,
+                 [ 'note', me, 'blablubb\nblabla', right, evn ],
+                 [ 'msg', me, you, 'Server Hello Done', false, rfc_cb('.chapter-7-4-5') ] ,
+                 [ 'msg', you, me, 'Client Key Exchange', false, rfc_cb('.chapter-7-4-7') ] ,
+                 [ 'msg', you, me, 'Change Cipher Spec', false, rfc_cb('.chapter-7-1') ],
+                 [ 'msg', you, me, 'Finished', true, rfc_cb('.chapter-7-4-9') ],
+                 [ 'msg', me, you, 'Change Cipher Spec', false, rfc_cb('.chapter-7-1') ],
+                 [ 'msg', me, you, 'Finished', true, rfc_cb('.chapter-7-4-9') ],
+                 [ 'msg', you, me, 'AD: GET /', true, rfc_cb('.chapter-10') ],
+                 [ 'msg', me, you, 'AD: this site', true, rfc_cb('.chapter-10') ] ];
 
     for (var i = 0 ; i < msgs.length ; i++) {
         var m = msgs[i];
