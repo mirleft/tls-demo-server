@@ -7,6 +7,23 @@ function msg (from, to, text, secret, ev1, tt) {
 function runme(diagram_div) {
     $('.chapter-NONE').show();
 
+
+    $.ajax({ url: "/diagram.txt" }).done( function( data ) {
+        console.log( "initially received data:", data.length );
+    });
+
+    var req = document.getElementById("request")
+    request.onclick = function () {
+        $.ajax({ url: "/rekey" })
+    }
+
+    var up = document.getElementById("update")
+    up.onclick = function () {
+        $.ajax({ url: "/diagram.txt" }).done( function( data ) {
+            console.log( "received data:", data.length );
+        });
+    }
+
     var diagram = new Diagram();
 
     var you = diagram.getActor('You');
