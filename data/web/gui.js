@@ -33,10 +33,23 @@ function handle_sec (from, msg) {
 }
 
 function process (diagram, in_record) {
-    if (in_record.event = 'message') {
+    var me = diagram.getActor('Me');
+    var txt = in_record.message;
+    if (in_record.event == 'message') {
         //msg
+        var you = diagram.getActor('You');
+        var from = me ;
+        var to = you ;
+        if (in_record.direction == 'in') {
+            from = you ; to = me ;
+        }
+        var sig = msg(from, to, txt, rfc_cb(txt));
+        handle_sec(from, txt);
+        diagram.addSignal(sig);
     } else {
         //note
+        var not = new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt);
+        diagram.addSignal(not)
     }
 }
 
@@ -68,38 +81,24 @@ function runme(diagram_div) {
     var tt = "tooltip here";
 
     var evn = function () { console.log("clicked note") }
-    var right = Diagram.PLACEMENT.RIGHTOF;
-    var left = Diagram.PLACEMENT.LEFTOF;
 
-    var msgs = [ [ 'msg', you, me, 'Client Hello' ] ,
-                 [ 'note', me, 'bla',  right, evn ],
-                 [ 'msg', me, you, 'Server Hello' ] ,
-                 [ 'note', me, 'blubb', right, evn ],
-                 [ 'msg', me, you, 'Certificate' ] ,
-                 [ 'note', me, 'blablubb\nblabla', right, evn ],
-                 [ 'msg', me, you, 'Server Hello Done' ] ,
-                 [ 'msg', you, me, 'Client Key Exchange' ] ,
-                 [ 'msg', you, me, 'Change Cipher Spec' ],
-                 [ 'msg', you, me, 'Finished' ],
-                 [ 'msg', me, you, 'Change Cipher Spec' ],
-                 [ 'msg', me, you, 'Finished' ],
-                 [ 'msg', you, me, 'AD: GET /' ],
-                 [ 'msg', me, you, 'AD: this site' ] ];
+    var msgs = [ { "event": "message", "message": "Client Hello", "direction": "in" },
+                 { "event": "note",    "message": "bla" },
+                 { "event": "message", "message": "Server Hello", "direction": "out" },
+                 { "event": "note",    "message": "blubb" },
+                 { "event": "message", "message": "Certificate", "direction": "out" },
+                 { "event": "note",    "message": "blablubb" },
+                 { "event": "message", "message": "Server Hello Done", "direction": "out" },
+                 { "event": "message", "message": "Client Key Exchange", "direction": "in" },
+                 { "event": "message", "message": "Change Cipher Spec", "direction": "in" },
+                 { "event": "message", "message": "Finished", "direction": "in" },
+                 { "event": "message", "message": "Change Cipher Spec", "direction": "out" },
+                 { "event": "message", "message": "Finished", "direction": "out" },
+                 { "event": "message", "message": "AD: GET /", "direction": "in" },
+                 { "event": "message", "message": "AD: this site", "direction": "out" } ]
 
     for (var i = 0 ; i < msgs.length ; i++) {
-        var m = msgs[i];
-        var typ = m[0];
-        if (typ == 'msg') {
-            var cb = rfc_cb(m[3]);
-            var sig = msg(m[1], m[2], m[3], cb)
-            handle_sec(m[1], m[3]);
-            diagram.addSignal(sig);
-        } else if (typ == 'note') {
-            var not = new Diagram.Note(m[1], m[3], m[2], m[4], tt);
-            diagram.addSignal(not)
-        } else {
-            console.log("unknown msg")
-        }
+        process(diagram, msgs[i]);
     }
 
     var options = {
