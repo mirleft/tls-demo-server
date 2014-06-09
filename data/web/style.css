@@ -100,7 +100,7 @@ header h2 {
 
 #rfc {
     float: left;
-    width: 40%;
+    width: 35%;
 }
 
 .rfc-chapter {
@@ -110,6 +110,7 @@ header h2 {
 
 #details {
     float: left;
+    font-size: 9px;
 }
 
 #diagram {
