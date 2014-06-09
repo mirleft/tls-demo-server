@@ -69,9 +69,11 @@ struct
       return (Http.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
-  let handle c kv trace conn req body =
+  let handle c kv trace tls conn req body =
     let path = Uri.path req.Http.Request.uri in
     match path with
+    | "/rekey"        -> TLS.rekey tls >> return (response "/rekey.txt",
+                                                  Body.of_string "intentionally left blank")
     | "/"             -> dispatch kv "/index.html" trace
     | s               -> dispatch kv s trace
 
@@ -81,7 +83,7 @@ struct
       | `Error _ -> fail (Failure "tls init")
       | `Ok tls  ->
           let open Http.Server in
-          listen { callback = handle c kv get_trace ; conn_closed = fun _ () -> () } tls
+          listen { callback = handle c kv get_trace tls ; conn_closed = fun _ () -> () } tls
 
   let start c stack kv =
     lwt cert = X509.certificate kv `Default in
