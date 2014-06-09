@@ -1,6 +1,6 @@
 
 function msg (from, to, text, secret, ev1, tt) {
-    var typ = secret ? Diagram.LINETYPE.DOTTED : Diagram.LINETYPE.SOLID;
+    var typ = secret ? Diagram.LINETYPE.SOLID : Diagram.LINETYPE.DOTTED;
     return new Diagram.Signal(from, typ | (Diagram.ARROWTYPE.FILLED << 2), to, text, ev1, tt)
 }
 
