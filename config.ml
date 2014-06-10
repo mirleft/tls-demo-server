@@ -11,6 +11,7 @@ let () =
   add_to_ocamlfind_libraries [
     "tls"; "tls.mirage";
     "tcpip.channel";
+    "yojson" ;
     "cohttp.lwt-core"; "mirage-http"
   ] ;
   register "tls-server" [ server $ default_console $ stack $ disk ]

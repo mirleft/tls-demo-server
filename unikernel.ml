@@ -8,6 +8,62 @@ let make_tracer () =
   and get ()     = List.rev !traces in
   (trace, get)
 
+let rec map_partial ~f = function
+  | []    -> []
+  | x::xs -> match f x with
+      | None   ->      map_partial ~f xs
+      | Some y -> y :: map_partial ~f xs
+
+let bytes_dump sexp : Yojson.json =
+  let open Sexplib.Sexp in
+  match sexp with
+  | List bs ->
+      let repr =
+        List.map (fun (List bytes) ->
+          `String (List.map (fun (Atom x) -> x) bytes |> String.concat " "))
+        bs in
+      `List repr
+
+let json_of_trace sexp : Yojson.json option =
+  let open Sexplib.Sexp in
+  let record ~dir ~ty ~bytes = `Assoc [
+      "event"     , `String "message"
+    ; "direction" , `String dir
+    ; "message"   , `String ty
+    ; "data"      , bytes_dump bytes
+  ]
+  and state ~dir ~ver:(Atom v) ~mach ~rekey =
+    `Assoc [
+        "event"     , `String "state"
+      ; "direction" , `String dir
+      ; "version"   , `String v
+      (* XXX decode machina into something usable *)
+      ; "machina"   , `String (to_string mach)
+    ]
+  in
+  match sexp with
+  | List [Atom tag; List sexps] ->
+    ( match (tag, sexps) with
+      | "record-in", [List [List [Atom _; Atom ty]; _]; bytes] ->
+          Some (record ~dir:"in" ~ty ~bytes)
+      | "record-out", [Atom ty; bytes] ->
+          Some (record ~dir:"out" ~ty ~bytes)
+      | ("state-in"|"state-out" as dir),
+        [ List [ Atom "handshake";
+                 List [ List [_; ver] ; List [_; mach]
+                      ; List [_; conf] ; List [_; rekey]
+                      ; List [_; frag]] ]
+               ; _; _; _]
+        ->
+          let dir = if dir = "state-in" then "in" else "out" in
+          Some (state ~dir ~ver ~mach ~rekey)
+      | _ -> None
+    )
+  | _ -> None
+
+let render_traces sexps =
+  Yojson.to_string @@ `List (map_partial ~f:json_of_trace sexps)
+
 module Main (C  : CONSOLE)
             (S  : STACKV4)
             (KV : KV_RO) =
