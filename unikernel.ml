@@ -2,13 +2,10 @@
 open Lwt
 open V1_LWT
 
-let make_tracer _ =
+let make_tracer () =
   let traces = ref [] in
-  let trace sexp =
-    traces := Sexplib.Sexp.to_string_hum sexp :: !traces
-  and get _ =
-    List.rev !traces
-  in
+  let trace sexp = (traces := sexp :: !traces)
+  and get ()     = List.rev !traces in
   (trace, get)
 
 module Main (C  : CONSOLE)
