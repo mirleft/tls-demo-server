@@ -32,9 +32,11 @@ struct
            | `Error (KV.Unknown_key _) -> fail (Invalid_argument name)
            | `Ok bufs -> return (Cstruct.copyv bufs)
 
-  let diagram _ =
-    let data = "{ foo : 'bar' ; bla : 'baz'  }" in
-    data
+  let save_traces c sexps =
+    (* "saving" traces. Because yeah. *)
+    Lwt_list.iter_s (fun sexp ->
+      C.log_s c (Sexplib.Sexp.to_string_hum sexp))
+      sexps
 
   let content_type path =
     let open String in
