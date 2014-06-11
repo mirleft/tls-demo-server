@@ -24,13 +24,32 @@ let bytes_dump sexp : Yojson.json =
         bs in
       `List repr
 
+open Sexplib.Sexp
+
+let rec flatten_sexp = function
+  | Atom x  -> x
+  | List xs -> List.map flatten_sexp xs |> String.concat " "
+
+let dict_dump sexp =
+  let open Sexplib.Sexp in
+  match sexp with
+  | List [Atom tag ; Atom value] -> `List [ `String tag ; `String value ]
+  | List [Atom tag ; List value] ->
+     `List [ `String tag ; `String ((List.map flatten_sexp value) |> String.concat ", ") ]
+  | List [Atom tag ; x ] -> `List [ `String tag ; `String (": broken2 : " ^ (to_string_hum x)) ]
+  | List stuff -> `List [ `String "" ;
+                          `String (List.map flatten_sexp stuff |> String.concat "\n") ]
+  | x -> `List [ `String "unknown" ; `String ("broken3 : " ^ (to_string_hum x)) ]
+
 let json_of_trace sexp : Yojson.json option =
   let open Sexplib.Sexp in
   let record ~dir ~ty ~bytes = `Assoc [
       "event"     , `String "message"
     ; "direction" , `String dir
     ; "message"   , `String ty
-    ; "data"      , bytes_dump bytes
+    ; "data"      , match bytes with
+                    | Some x -> `List (List.map dict_dump x)
+                    | None -> `List [ ]
   ]
   and state ~dir ~ver:(Atom v) ~mach ~rekey =
     `Assoc [
@@ -44,11 +63,19 @@ let json_of_trace sexp : Yojson.json option =
   match sexp with
   | List [Atom tag; List sexps] ->
     ( match (tag, sexps) with
-      | "record-in", [List [List [Atom _; Atom ty]; _]; bytes] ->
-          Some (record ~dir:"in" ~ty ~bytes)
-      | "record-out", [Atom ty; bytes] ->
-          Some (record ~dir:"out" ~ty ~bytes)
-      | ("state-in"|"state-out" as dir),
+      | "handshake-in", [Atom ty; List data ] ->
+         Some (record ~dir:"in" ~ty ~bytes:(Some data))
+      | "handshake-out", [Atom ty; List data] ->
+         Some (record ~dir:"out" ~ty ~bytes:(Some data))
+      | "change-cipher-spec-in", _ ->
+         Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:None)
+      | "change-cipher-spec-out", _ ->
+         Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:None)
+      | "application-data-in", bytes ->
+         Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:None)
+      | "application-data-out", bytes ->
+         Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:None)
+(*      | ("state-in"|"state-out" as dir),
         [ List [ Atom "handshake";
                  List [ List [_; ver] ; List [_; mach]
                       ; List [_; conf] ; List [_; rekey]
@@ -56,9 +83,16 @@ let json_of_trace sexp : Yojson.json option =
                ; _; _; _]
         ->
           let dir = if dir = "state-in" then "in" else "out" in
-          Some (state ~dir ~ver ~mach ~rekey)
+          Some (state ~dir ~ver ~mach ~rekey) *)
       | _ -> None
     )
+  | List [Atom tag; Atom ty] -> (* happens for empty messages: ServerHelloDone / HelloRequest *)
+     ( match tag with
+      | "handshake-in" ->
+         Some (record ~dir:"in" ~ty ~bytes:None)
+      | "handshake-out" ->
+         Some (record ~dir:"out" ~ty ~bytes:None)
+      | _ -> None )
   | _ -> None
 
 let render_traces sexps =
@@ -117,14 +151,14 @@ struct
 
   let dispatch (c, kv, _, trace) path =
     let traces = trace () in
-    lwt _ = save_traces c traces in
+(*    lwt _ = save_traces c traces in *)
     let resp = response path in
     try_lwt
       lwt data =
         match path with
-        | "/diagram.json"
-        | "/diagram.txt" -> return (render_traces traces)
-        | s              -> read_kv kv s
+        | "/diagram.json" -> return (render_traces traces)
+        | "/diagram.txt"  -> return (String.concat "\n" (List.map Sexplib.Sexp.to_string_hum traces))
+        | s               -> read_kv kv s
       in
       return (resp, (Body.of_string data))
     with _ ->
