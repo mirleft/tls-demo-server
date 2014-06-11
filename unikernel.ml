@@ -159,7 +159,7 @@ struct
 
   let dispatch (c, kv, _, trace) path =
     let traces = trace () in
-(*    lwt _ = save_traces c traces in *)
+    lwt _ = save_traces c traces in
     let resp = response path in
     try_lwt
       lwt data =
