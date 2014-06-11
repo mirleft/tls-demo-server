@@ -108,14 +108,15 @@ header h2 {
     font-size: 9px;
 }
 
-#details {
+#details-div {
     float: left;
-    font-size: 9px;
+    font-size: 10px;
+    width: 40%;
 }
 
 #diagram {
     float: left;
-    width: 30%;
+    width: 25%;
 }
 
 .site-footer {
