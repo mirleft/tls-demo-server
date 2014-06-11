@@ -64,11 +64,12 @@ function process (me, you, in_record) {
         var r = msg(from, to, txt);
         handle_sec(from, txt);
         return r;
-    } //else {
+    } else if (in_record.event == 'note') {
         //note
-     //   var not = new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt);
-     //   diagram.addSignal(not)
-    //}
+        if (in_record.data == '')
+            return new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt)
+        return new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt, null, in_record.data);
+    }
 }
 
 function insertSignals (diagram, details_ul, signals, data) {
@@ -77,26 +78,29 @@ function insertSignals (diagram, details_ul, signals, data) {
 
     for ( var i = 0 ; i < signals.length ; i++ ) {
         var now = signals[i];
-        var txt = now.message;
-        if (last != null && last.actorA == now.actorA &&
-            (last.message == txt || last.message == txt + '*' )) {
-            var cb = rfc_cb(last, details_ul, txt, data[i].data);
-            last.ev1 = cb;
-            if (last.message == txt) {
-                last.message = last.message + "*";
+        if (now.type == 'Signal') {
+            var txt = now.message;
+            if (last != null && last.actorA == now.actorA &&
+                (last.message == txt || last.message == txt + '*' )) {
+                var cb = rfc_cb(last, details_ul, txt, data[i].data);
+                last.ev1 = cb;
+                if (last.message == txt) {
+                    last.message = last.message + "*";
+                }
+            } else {
+                var cb = rfc_cb(now, details_ul, txt, data[i].data);
+                now.ev1 = cb;
+                diagram.addSignal(now);
+                last = now;
             }
         } else {
-            var cb = rfc_cb(now, details_ul, txt, data[i].data);
-            now.ev1 = cb;
             diagram.addSignal(now);
-            last = now;
         }
     }
 }
 
 function getData (diagram_div, details_ul) {
   $.ajax({ url: "/diagram.json" }).done( function( data ) {
-      console.log( "received data:", data.length );
       var diagram = new Diagram();
       var you = diagram.getActor('Client');
       var me = diagram.getActor('Server');

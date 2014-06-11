@@ -64,6 +64,12 @@ let json_of_trace sexp : Yojson.json option =
       (* XXX decode machina into something usable *)
       ; "machina"   , `String (to_string mach)
     ]
+  and note ~msg ~data =
+    `Assoc [
+        "event"     , `String "note"
+      ; "message"   , `String msg
+      ; "data"      , `String data
+    ]
   in
   match sexp with
   | List [Atom tag; List sexps] ->
@@ -80,15 +86,8 @@ let json_of_trace sexp : Yojson.json option =
          Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
       | "application-data-out", bytes ->
          Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
-(*      | ("state-in"|"state-out" as dir),
-        [ List [ Atom "handshake";
-                 List [ List [_; ver] ; List [_; mach]
-                      ; List [_; conf] ; List [_; rekey]
-                      ; List [_; frag]] ]
-               ; _; _; _]
-        ->
-          let dir = if dir = "state-in" then "in" else "out" in
-          Some (state ~dir ~ver ~mach ~rekey) *)
+      | "master-secret", bytes ->
+         Some (note ~msg:"MasterSecret" ~data:(flatten_sexp (List bytes)))
       | _ -> None
     )
   | List [Atom tag; Atom ty] -> (* happens for empty messages: ServerHelloDone / HelloRequest *)
@@ -97,6 +96,10 @@ let json_of_trace sexp : Yojson.json option =
          Some (record ~dir:"in" ~ty ~bytes:([]))
       | "handshake-out" ->
          Some (record ~dir:"out" ~ty ~bytes:([]))
+      | "version" ->
+         Some (note ~msg:ty ~data:"")
+      | "cipher" ->
+         Some (note ~msg:"Cipher" ~data:ty)
       | _ -> None )
   | _ -> None
 
