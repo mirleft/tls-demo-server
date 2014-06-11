@@ -89,8 +89,8 @@ function getData (diagram_div, details_ul) {
   $.ajax({ url: "/diagram.json" }).done( function( data ) {
       console.log( "received data:", data.length );
       var diagram = new Diagram();
-      var you = diagram.getActor('You');
-      var me = diagram.getActor('Me');
+      var you = diagram.getActor('Client');
+      var me = diagram.getActor('Server');
 
       var signals = _.map(data, function (x) { return process(me, you, x) });
       insertSignals(diagram, details_ul, signals, data);
