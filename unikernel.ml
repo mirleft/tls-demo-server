@@ -165,7 +165,6 @@ struct
       lwt data =
         match path with
         | "/diagram.json" -> return (render_traces traces)
-        | "/diagram.txt"  -> return (String.concat "\n" (List.map Sexplib.Sexp.to_string_hum traces))
         | s               -> read_kv kv s
       in
       return (resp, (Body.of_string data))
