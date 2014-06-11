@@ -25,17 +25,21 @@ function clear_element (element) {
         element.removeChild(element.firstChild)
 }
 
-function rfc_cb (ul, msg, data) {
+function rfc_cb (sig, ul, msg, moredata) {
     var chap = lookupchap(msg);
+    for (var i = 0 ; i < moredata.length ; i++) {
+        var datum = moredata[i];
+        var dat = datum[0] != '' ? datum[0] + ': ' : ''
+        var txt = dat + datum[1];
+        sig.data.push(txt);
+    }
     return function () {
         $('.rfc-chapter').hide() ;
         $(chap).show('slow');
         clear_element(ul);
-        for (var i = 0 ; i < data.length ; i++) {
+        for (var i = 0 ; i < sig.data.length ; i++) {
             var li = document.createElement('li');
-            var datum = data[i];
-            var dat = datum[0] != '' ? datum[0] + ': ' : ''
-            li.innerHTML = dat + datum[1];
+            li.innerHTML = sig.data[i];
             ul.appendChild(li);
         }
     }
@@ -74,14 +78,19 @@ function insertSignals (diagram, details_ul, signals, data) {
     for ( var i = 0 ; i < signals.length ; i++ ) {
         var now = signals[i];
         var txt = now.message;
-        if (last != null && last.message == txt && last.actorA == now.actorA) {
-            last.message = last.message + "*";
+        if (last != null && last.actorA == now.actorA &&
+            (last.message == txt || last.message == txt + '*' )) {
+            var cb = rfc_cb(last, details_ul, txt, data[i].data);
+            last.ev1 = cb;
+            if (last.message == txt) {
+                last.message = last.message + "*";
+            }
         } else {
-            var cb = rfc_cb(details_ul, txt, data[i].data);
+            var cb = rfc_cb(now, details_ul, txt, data[i].data);
             now.ev1 = cb;
             diagram.addSignal(now);
+            last = now;
         }
-        last = now;
     }
 }
 
