@@ -37,12 +37,8 @@ let hex_sexp_to_string xs =
             implode (List.map (fun (Atom x) -> char_of_int (Scanf.sscanf x "%x" (fun x -> x))) hex))
            xs |> String.concat ""
 
-let app_data_to_string x = (* = function
-  | List stuff ->
-     `List [ `String "" ;
-             `String (List.map hex_sexp_to_string stuff |> String.concat "") ]
-  | x -> *) to_string_hum x
-
+let app_data_to_string bytes =
+  [ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]
 
 let dict_dump = function
   | List [Atom tag ; Atom value] -> `List [ `String tag ; `String value ]
@@ -81,9 +77,9 @@ let json_of_trace sexp : Yojson.json option =
       | "change-cipher-spec-out", _ ->
          Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:[])
       | "application-data-in", bytes ->
-         Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:([ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]))
+         Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
       | "application-data-out", bytes ->
-         Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:([ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]))
+         Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
 (*      | ("state-in"|"state-out" as dir),
         [ List [ Atom "handshake";
                  List [ List [_; ver] ; List [_; mach]
