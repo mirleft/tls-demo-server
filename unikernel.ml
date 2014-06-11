@@ -14,9 +14,9 @@ let rec map_partial ~f = function
       | None   ->      map_partial ~f xs
       | Some y -> y :: map_partial ~f xs
 
-let bytes_dump sexp : Yojson.json =
-  let open Sexplib.Sexp in
-  match sexp with
+open Sexplib.Sexp
+
+let bytes_dump = function
   | List bs ->
       let repr =
         List.map (fun (List bytes) ->
@@ -24,15 +24,27 @@ let bytes_dump sexp : Yojson.json =
         bs in
       `List repr
 
-open Sexplib.Sexp
-
 let rec flatten_sexp = function
   | Atom x  -> x
   | List xs -> List.map flatten_sexp xs |> String.concat " "
 
-let dict_dump sexp =
-  let open Sexplib.Sexp in
-  match sexp with
+let rec implode = function
+  | []    -> ""
+  | x::xs -> (Char.escaped x) ^ (implode xs)
+
+let hex_sexp_to_string xs =
+  List.map (fun (List hex) ->
+            implode (List.map (fun (Atom x) -> char_of_int (Scanf.sscanf x "%x" (fun x -> x))) hex))
+           xs |> String.concat ""
+
+let app_data_to_string x = (* = function
+  | List stuff ->
+     `List [ `String "" ;
+             `String (List.map hex_sexp_to_string stuff |> String.concat "") ]
+  | x -> *) to_string_hum x
+
+
+let dict_dump = function
   | List [Atom tag ; Atom value] -> `List [ `String tag ; `String value ]
   | List [Atom tag ; List value] ->
      `List [ `String tag ; `String ((List.map flatten_sexp value) |> String.concat ", ") ]
@@ -42,14 +54,11 @@ let dict_dump sexp =
   | x -> `List [ `String "unknown" ; `String ("broken3 : " ^ (to_string_hum x)) ]
 
 let json_of_trace sexp : Yojson.json option =
-  let open Sexplib.Sexp in
   let record ~dir ~ty ~bytes = `Assoc [
       "event"     , `String "message"
     ; "direction" , `String dir
     ; "message"   , `String ty
-    ; "data"      , match bytes with
-                    | Some x -> `List (List.map dict_dump x)
-                    | None -> `List [ ]
+    ; "data"      , `List bytes
   ]
   and state ~dir ~ver:(Atom v) ~mach ~rekey =
     `Assoc [
@@ -64,17 +73,17 @@ let json_of_trace sexp : Yojson.json option =
   | List [Atom tag; List sexps] ->
     ( match (tag, sexps) with
       | "handshake-in", [Atom ty; List data ] ->
-         Some (record ~dir:"in" ~ty ~bytes:(Some data))
+         Some (record ~dir:"in" ~ty ~bytes:(List.map dict_dump data))
       | "handshake-out", [Atom ty; List data] ->
-         Some (record ~dir:"out" ~ty ~bytes:(Some data))
+         Some (record ~dir:"out" ~ty ~bytes:(List.map dict_dump data))
       | "change-cipher-spec-in", _ ->
-         Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:None)
+         Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:[])
       | "change-cipher-spec-out", _ ->
-         Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:None)
+         Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:[])
       | "application-data-in", bytes ->
-         Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:None)
+         Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:([ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]))
       | "application-data-out", bytes ->
-         Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:None)
+         Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:([ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]))
 (*      | ("state-in"|"state-out" as dir),
         [ List [ Atom "handshake";
                  List [ List [_; ver] ; List [_; mach]
@@ -89,9 +98,9 @@ let json_of_trace sexp : Yojson.json option =
   | List [Atom tag; Atom ty] -> (* happens for empty messages: ServerHelloDone / HelloRequest *)
      ( match tag with
       | "handshake-in" ->
-         Some (record ~dir:"in" ~ty ~bytes:None)
+         Some (record ~dir:"in" ~ty ~bytes:([]))
       | "handshake-out" ->
-         Some (record ~dir:"out" ~ty ~bytes:None)
+         Some (record ~dir:"out" ~ty ~bytes:([]))
       | _ -> None )
   | _ -> None
 
