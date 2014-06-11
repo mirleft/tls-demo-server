@@ -22,6 +22,7 @@
         <h3>Information</h3>
         <p>The data shown here is from your current handshake with our server (which uses the <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> stack). We visualise the recorded TLS fragments on the wire between your browser and our server, as well as some internal state of our server. There is no recording of IP addresses whatsoever, only data on top of the TLS fragments. We keep this data for research purposes.</p>
         <p>The messages with dotted lines is unencrypted data, solid lines represent encrypted data.</p>
+        <input type="button" value="" id="request" disabled="true"></input>
       </section>
 
       <section id="demo">
@@ -691,8 +692,10 @@
    layer.</pre></para>
         </div>
         <div id="diagram">This should be a diagram! If you don't see it you need Javascript enabled</div>
-        <div id="details"><pre id="details-pre">Intentionally left blank!</pre></div>
-        <input type="button" value="renegotiate" id="request"></input>
+        <div id="details-div">
+          <ul id="details"><li>Intentionally left blank</li></ul>
+        </div>
+        <br />
       </section>
     </div>
 
