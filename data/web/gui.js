@@ -141,7 +141,7 @@ function initialise () {
             req.value = 'renegotiating...';
             req.disabled = true;
             $.ajax({ url: "/rekey" }).done( function () {
-                setTimeout(function () { return getData(diagram_div, details_ul); }, 1000)
+                setTimeout(function () { return getData(diagram_div, details_ul); }, 300)
             })
         }
     }

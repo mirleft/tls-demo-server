@@ -20,8 +20,11 @@
 
       <section id="info">
         <h3>Information</h3>
-        <p>The data shown here is from your current handshake with our server (which uses the <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> stack). We visualise the recorded TLS fragments on the wire between your browser and our server, as well as some internal state of our server. There is no recording of IP addresses whatsoever, only data on top of the TLS fragments. We keep this data for research purposes.</p>
-        <p>The messages with dotted lines is unencrypted data, solid lines represent encrypted data.</p>
+        <p>The sequence diagram below is the TLS handshake you just did with this web server. We demonstrate it using tracing of our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> implementation. We chose the protocol version and ciphersuite at random for this demonstration server, we do not use the best one available.</p>
+        <p>The dotted lines represent messages which are unencrypted, while solid lines are encrypted messages. On the left you can see excerpts of the RFC 5246 describing the message you clicked on. On the right you can see further details about the message. Subsequent messages of the same type are condensed into a single one and marked with a trailing '*'.</p>
+        <p>The 'renegotiate' button below lets our server send a Hello Request message to the client, and after 500 milliseconds the JavaScript fetches a new trace. With some luck both requests use the same connection, and you will see another handshake in the sequence diagram.</p>
+        <p>For research purposes we retain the traces. These are solely on the TLS layer, no IP address and port numbers are captured whatsoever.</p>
+        <p>Please report any issues to <a href="https://github.com/mirleft/ocaml-tls/issues">GitHub issue tracker</a>.
         <input type="button" value="" id="request" disabled="true"></input>
       </section>
 
