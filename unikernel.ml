@@ -116,22 +116,32 @@ module Traces_store = struct
   open Sexplib
   open Irmin_unix
 
+  module Contents_sexp : IrminContents.S with type t = Sexp.t = struct
+
+    module Ident = IrminIdent.Make ( struct
+      type t = Sexp.t
+      let t_of_sexp s = s
+      and sexp_of_t s = s
+      let compare = compare
+    end )
+    include Ident
+
+    let merge = IrminMerge.default (module Ident)
+  end
+
   module Git = IrminGit.FS ( struct
     let root = Some "./trace"
     let bare = true
   end )
 
-  module Store = Git.Make (IrminKey.SHA1)
-                          (IrminContents.String)
-                          (IrminTag.String)
+  module Store = Git.Make (IrminKey.SHA1) (Contents_sexp) (IrminTag.String)
+
   let create = Store.create
 
   let trace t sexps =
     let ts = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
     let sexp  = Sexp.List sexps in
-    Store.update t
-      [ "127.0.0.1:port"; ts ]
-      (Sexp.to_string_hum sexp)
+    Store.update t [ "ADDRESS:PORT"; ts ] sexp
 end
 
 
@@ -182,11 +192,8 @@ struct
 
   let dispatch (c, kv, irmin, _, trace) path =
     let traces = trace () in
-    Printf.eprintf "+++ PRE-SAVE\n%!";
-    lwt _ = Traces_store.trace irmin traces in
-(*     lwt _ = save_traces c traces in *)
-    Printf.eprintf "+++ POST-SAVE\n%!";
-    let resp = response path in
+    lwt _      = Traces_store.trace irmin traces in
+    let resp   = response path in
     try_lwt
       lwt data =
         match path with
