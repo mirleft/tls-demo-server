@@ -138,9 +138,16 @@ module Traces_store = struct
 
   let create = Store.create
 
+  let interesting sexp =
+    let open Sexp in
+    match sexp with
+    | List (Atom "application-data-out" ::_) -> false
+    | _                                      -> true
+
   let trace t sexps =
-    let ts = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
-    let sexp  = Sexp.List sexps in
+    let ts   = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
+    let sexp = Sexp.List (List.filter interesting sexps)
+    in
     Store.update t [ "ADDRESS:PORT"; ts ] sexp
 end
 
