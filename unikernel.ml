@@ -217,7 +217,8 @@ struct
   let upgrade c irmin conf kv tcp =
     let trace, get_trace = make_tracer () in
     TLS.server_of_tcp_flow ~trace conf tcp >>= function
-      | `Error _ -> fail (Failure "tls init")
+      | `Error _ ->
+          Traces_store.trace irmin (get_trace ()) >> fail (Failure "tls init")
       | `Ok tls  ->
           let ctx = (c, kv, irmin, tls, get_trace) in
           let open Http.Server in
