@@ -111,6 +111,30 @@ module Traces_out = struct
 
 end
 
+module Traces_store = struct
+
+  open Sexplib
+  open Irmin_unix
+
+  module Git = IrminGit.FS ( struct
+    let root = Some "./trace"
+    let bare = true
+  end )
+
+  module Store = Git.Make (IrminKey.SHA1)
+                          (IrminContents.String)
+                          (IrminTag.String)
+  let create = Store.create
+
+  let trace t sexps =
+    let ts = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
+    let sexp  = Sexp.List sexps in
+    Store.update t
+      [ "127.0.0.1:port"; ts ]
+      (Sexp.to_string_hum sexp)
+end
+
+
 module Main (C  : CONSOLE)
             (S  : STACKV4)
             (KV : KV_RO) =
@@ -135,12 +159,6 @@ struct
            | `Error (KV.Unknown_key _) -> fail (Invalid_argument name)
            | `Ok bufs -> return (Cstruct.copyv bufs)
 
-  let save_traces c sexps =
-    (* "saving" traces. Because yeah. *)
-    Lwt_list.iter_s (fun sexp ->
-      C.log_s c (Sexplib.Sexp.to_string_hum sexp))
-      sexps
-
   let content_type path =
     let open String in
     try
@@ -162,9 +180,12 @@ struct
       ; "Connection"   , "Keep-Alive"
       ]) ()
 
-  let dispatch (c, kv, _, trace) path =
+  let dispatch (c, kv, irmin, _, trace) path =
     let traces = trace () in
-    lwt _ = save_traces c traces in
+    Printf.eprintf "+++ PRE-SAVE\n%!";
+    lwt _ = Traces_store.trace irmin traces in
+(*     lwt _ = save_traces c traces in *)
+    Printf.eprintf "+++ POST-SAVE\n%!";
     let resp = response path in
     try_lwt
       lwt data =
@@ -177,27 +198,29 @@ struct
       return (Http.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
-  let handle (_, kv, tls, _ as ctx) conn req body =
+  let handle (_, kv, _, tls, _ as ctx) conn req body =
     let path = Uri.path req.Http.Request.uri in
     match path with
-    | "/rekey"        -> TLS.rekey tls >> return (response "/rekey.txt",
-                                                  Body.of_string "intentionally left blank")
-    | "/"             -> dispatch ctx "/index.html"
-    | s               -> dispatch ctx s
+    | "/rekey" ->
+        TLS.rekey tls >|= fun () ->
+        (response "/rekey.txt", Body.of_string "intentionally left blank")
+    | "/"      -> dispatch ctx "/index.html"
+    | s        -> dispatch ctx s
 
-  let upgrade c conf kv tcp =
+  let upgrade c irmin conf kv tcp =
     let trace, get_trace = make_tracer () in
     TLS.server_of_tcp_flow ~trace conf tcp >>= function
       | `Error _ -> fail (Failure "tls init")
       | `Ok tls  ->
-          let ctx = (c, kv, tls, get_trace) in
+          let ctx = (c, kv, irmin, tls, get_trace) in
           let open Http.Server in
           listen { callback = handle ctx; conn_closed = fun _ () -> () } tls
 
   let start c stack kv =
-    lwt cert = X509.certificate kv `Default in
-    let conf = Tls.Config.server_exn ~certificate:cert () in
-    S.listen_tcpv4 stack 4433 (upgrade c conf kv) ;
+    lwt cert  = X509.certificate kv `Default in
+    let conf  = Tls.Config.server_exn ~certificate:cert () in
+    lwt irmin = Traces_store.create () in
+    S.listen_tcpv4 stack 4433 (upgrade c irmin conf kv) ;
     S.listen stack
 
 end
