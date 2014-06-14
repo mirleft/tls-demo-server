@@ -5,7 +5,9 @@ open V1_LWT
 let make_tracer () =
   let traces = ref [] in
   let trace sexp = (traces := sexp :: !traces)
-  and get ()     = List.rev !traces in
+  and get () =
+    let trcs = List.rev !traces in
+    traces := [] ; trcs in
   (trace, get)
 
 let rec map_partial ~f = function
