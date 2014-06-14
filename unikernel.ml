@@ -74,6 +74,8 @@ module Traces_out = struct
         ; "data"      , `String data
       ]
     in
+    let app_data_out_subst =
+      [ `List [`String ""; `String "(data on this page)" ]] in
     match sexp with
     | List [Atom tag; List sexps] ->
       ( match (tag, sexps) with
@@ -88,7 +90,7 @@ module Traces_out = struct
         | "application-data-in", bytes ->
           Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
         | "application-data-out", bytes ->
-          Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
+          Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:app_data_out_subst)
         | "master-secret", bytes ->
           Some (note ~msg:"MasterSecret" ~data:(flatten_sexp (List bytes)))
         | _ -> None
