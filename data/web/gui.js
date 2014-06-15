@@ -89,11 +89,15 @@ function insertSignals (diagram, signals, data) {
     }
 }
 
+var data = [] ;
+
 function getData () {
-  $.ajax({ url: "/diagram.json" }).done( function( data ) {
+  $.ajax({ url: "/diagram.json" }).done( function( data1 ) {
       var diagram = new Diagram();
       var you = diagram.getActor('Client');
       var me = diagram.getActor('Server');
+
+      data = data.concat (data1);
 
       var signals = _.map(data, function (x) { return process(me, you, x) });
       insertSignals(diagram, signals, data);
