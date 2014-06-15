@@ -235,11 +235,13 @@ struct
           let open Http.Server in
           listen { callback = handle ctx; conn_closed = fun _ () -> () } tls
 
+  let port = try int_of_string Sys.argv.(1) with _ -> 4433
+
   let start c stack kv =
     lwt cert  = X509.certificate kv `Default in
     let conf  = Tls.Config.server_exn ~certificate:cert () in
     lwt irmin = Traces_store.create () in
-    S.listen_tcpv4 stack 4433 (upgrade c irmin conf kv) ;
+    S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
     S.listen stack
 
 end
