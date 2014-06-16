@@ -19,11 +19,11 @@
     <div id="main">
 
       <section id="info">
-        <h3>Information</h3>
-        <p>The sequence diagram below is the TLS handshake you just did with this web server. We demonstrate it using tracing of our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> implementation. We chose the protocol version and ciphersuite at random for this demonstration server, we do not use the best one available.</p>
+        <h3>About this site</h3>
+        <p>When connecting to a secure site, your browser automatically initiates a handshake with the server. The sequence diagram below shows you the <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security#TLS_handshake">TLS handshake</a> that took place when your browser connected to this web server. We demonstrate it using tracing of our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> implementation. We chose the protocol version and ciphersuite at random for this demonstration server, we do not use the best one available.</p>
         <p>The dotted lines represent messages which are unencrypted, while solid lines are encrypted messages. On the left you can see excerpts of the RFC 5246 describing the message you clicked on. On the right you can see further details about the message. Subsequent messages of the same type are condensed into a single one and marked with a trailing '*'.</p>
         <p>The 'renegotiate' button below lets our server send a Hello Request message to the client, and after 500 milliseconds the JavaScript fetches a new trace. With some luck both requests use the same connection, and you will see another handshake in the sequence diagram.</p>
-        <p>For research purposes we retain the traces. These are solely on the TLS layer, no IP address and port numbers are captured whatsoever.</p>
+        <p>For research purposes we retain the traces. These are solely on the TLS layer and no IP addresses nor port numbers are captured whatsoever. You can also view the <a href="https://github.com/mirleft/tls-demo-server">source code of this server</a>.</p>
         <p>Please report any issues to <a href="https://github.com/mirleft/ocaml-tls/issues">GitHub issue tracker</a>.
         <input type="button" value="" id="request" disabled="true"></input>
       </section>
