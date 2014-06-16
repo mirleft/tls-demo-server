@@ -19,15 +19,13 @@
     <div id="main">
 
       <section id="info">
-        <h3>About this site</h3>
         <p>When connecting to a secure site (http<b>s</b>://), your browser automatically initiates a secure connection (using <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">transport layer security (TLS)</a>). The sequence diagram below shows you the <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security#TLS_handshake">TLS handshake</a> that took place when your browser connected to this web server. We traced it using our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> implementation.</p>
         <p>The dotted lines represent unencrypted messages, while the solid lines indicate encrypted messages. On the left the <a href="https://tools.ietf.org/html/rfc5246">RFC 5246 (TLS-1.2)</a> specification of the selected message type is presented. On the right further details about the exchanged message are shown. Subsequent messages of the same type are condensed (marked with '*').</p>
         <p>The 'renegotiate' button below lets our server send a <i>Hello Request</i> message to the client, and after 500 milliseconds the JavaScript fetches a new trace and updates the sequence diagram. With some luck both requests used the same connection. Our demo server picked protocol version and ciphersuite at random.</p>
-        <input type="button" value="" id="request" disabled="true"></input>
+        <input type="button" value="waiting for JS" id="request" disabled="true"></input>
       </section>
 
       <section id="demo">
-        <h3>Showtime</h3>
         <div id="rfc">
           <para class="rfc-chapter chapter-NONE"><pre>Click inside the diagram!</pre></para>
           <para class="rfc-chapter chapter-7-1"><pre>7.1.  Change Cipher Spec Protocol

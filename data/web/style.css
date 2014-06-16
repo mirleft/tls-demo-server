@@ -4,11 +4,8 @@ html {
 }
 
 body {
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 10px;
     background: #fafafa;
-    font-family: 'Helvetica Neue', Helvetica, Arial, serif;
-    font-weight: 400;
     color: #666;
     height: 100%;
     margin-bottom: 16px
@@ -32,7 +29,7 @@ header {
 
 header h1 {
     letter-spacing: -1px;
-    font-size: 72px;
+    font-size: 54px;
     color: #fff;
     line-height: 1;
     margin-bottom: 0.2em;
@@ -58,40 +55,6 @@ header h2 {
     color: #474747;
     min-height: 100%;
     margin-bottom: 8px
-}
-
-#main h1:before {
-    content: "/";
-    color: #9ddcff;
-    padding-right: 0.3em;
-}
-
-#main h2 {
-    font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #474747;
-}
-#main h2:before {
-    content: "//";
-    color: #9ddcff;
-    padding-right: 0.3em;
-}
-
-#main h3 {
-    font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #474747;
-}
-
-#main h3:before {
-    content: "///";
-    color: #9ddcff;
-    padding-right: 0.3em;
-    margin-left: -2em;
 }
 
 .center {
