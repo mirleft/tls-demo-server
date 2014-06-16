@@ -33,14 +33,20 @@ module Traces_out = struct
     | Atom x  -> x
     | List xs -> List.map flatten_sexp xs |> String.concat " "
 
-  let rec implode = function
-    | []    -> ""
-    | x::xs -> (Char.escaped x) ^ (implode xs)
+  let rec implode str =
+    let rec esc = function
+      | []             -> [""]
+      | '\r'::'\n'::xs
+      | '\n'::xs       -> "\n" :: esc xs
+      | x::xs          -> Char.escaped x :: esc xs in
+    String.concat "" (esc str)
 
   let hex_sexp_to_string xs =
-    List.map (fun (List hex) ->
-              implode (List.map (fun (Atom x) -> char_of_int (Scanf.sscanf x "%x" (fun x -> x))) hex))
-            xs |> String.concat ""
+    let to_byte str =
+      char_of_int (Scanf.sscanf str "%x" (fun x -> x)) in
+    xs |> List.map (fun (List bs) -> List.map (fun (Atom str) -> to_byte str) bs)
+       |> List.concat
+       |> implode
 
   let app_data_to_string bytes =
     [ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]

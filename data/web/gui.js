@@ -30,7 +30,9 @@ function rfc_cb (sig, msg, moredata) {
         $('.rfc-chapter').hide() ;
         $(chap).show('fast');
         $('#details').empty().append(
-          _.map (sig.data, function (d) { return $("<li>").append (d) })
+          _.map (sig.data, function (d) {
+            return $("<li><pre>").find('pre').append(d).end()
+          })
         )
     }
 }
@@ -129,7 +131,7 @@ function initialise () {
             req.value = 'renegotiating...';
             req.disabled = true;
             $.ajax({ url: "/rekey" }).done( function () {
-                setTimeout(function () { return getData(); }, 300)
+                setTimeout(getData, 500)
             })
         }
     }
