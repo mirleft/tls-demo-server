@@ -43,7 +43,7 @@ module Traces_out = struct
       `List [ `String tag ; `String ((List.map flatten_sexp value) |> String.concat ", ") ]
     | List [Atom tag ; x ] -> `List [ `String tag ; `String (": broken2 : " ^ (to_string_hum x)) ]
     | List stuff -> `List [ `String "" ;
-                            `String (List.map flatten_sexp stuff |> String.concat "\n") ]
+                            `String (List.map flatten_sexp stuff |> String.concat " ") ]
     | x -> `List [ `String "unknown" ; `String ("broken3 : " ^ (to_string_hum x)) ]
 
   let json_of_trace sexp : Yojson.json option =
