@@ -2,20 +2,6 @@
 open Lwt
 open V1_LWT
 
-let make_tracer () =
-  let traces = ref [] in
-  let trace sexp = (traces := sexp :: !traces)
-  and get () =
-    let trcs = List.rev !traces in
-    traces := [] ; trcs in
-  (trace, get)
-
-let rec map_partial ~f = function
-  | []    -> []
-  | x::xs -> match f x with
-      | None   ->      map_partial ~f xs
-      | Some y -> y :: map_partial ~f xs
-
 
 module Traces_out = struct
 
@@ -116,8 +102,7 @@ module Traces_out = struct
         | _ -> None )
     | _ -> None
 
-  let render_traces sexps =
-    Yojson.to_string @@ `List (map_partial ~f:json_of_trace sexps)
+  let render jsons = Yojson.to_string (`List jsons)
 
 end
 
@@ -154,11 +139,50 @@ module Traces_store = struct
     | List (Atom "application-data-out" ::_) -> false
     | _                                      -> true
 
-  let trace t sexps =
+  let save t id sexps =
     let ts   = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
-    let sexp = Sexp.List (List.filter interesting sexps)
-    in
-    Store.update t [ "ADDRESS:PORT"; ts ] sexp
+    let sexp = Sexp.List sexps in
+    Store.update t [ id ; ts ] sexp
+
+end
+
+module Trace_session = struct
+
+  type t = {
+    id    : string ;
+    store : Traces_store.Store.t ;
+    mutable jsons : Yojson.json list ;
+    mutable sexps : Sexplib.Sexp.t list
+  }
+
+  let random_tag () =
+    Printf.sprintf "%016Lx" @@
+      Cstruct.BE.get_uint64 (Nocrypto.Rng.generate 8) 0
+
+  let create store = {
+    id    = random_tag () ;
+    store = store ;
+    jsons = [] ;
+    sexps = []
+  }
+
+  let trace t sexp =
+    ( match Traces_out.json_of_trace sexp with
+      | None      -> ()
+      | Some json -> t.jsons <- json :: t.jsons ) ;
+    ( if Traces_store.interesting sexp then
+      t.sexps <- sexp :: t.sexps )
+
+  let flush t =
+    let sexps = List.rev t.sexps in
+    t.sexps <- [] ;
+    Traces_store.save t.store t.id sexps
+
+  let render_traces t =
+    let jsons = List.rev t.jsons in
+    t.jsons <- [] ;
+    Traces_out.render jsons
+
 end
 
 
@@ -207,14 +231,13 @@ struct
       ; "Connection"   , "Keep-Alive"
       ]) ()
 
-  let dispatch (c, kv, irmin, _, trace) path =
-    let traces = trace () in
-    lwt _      = Traces_store.trace irmin traces in
+  let dispatch (c, kv, tracer, _) path =
+    lwt () = Trace_session.flush tracer in
     let resp   = response path in
     try_lwt
       lwt data =
         match path with
-        | "/diagram.json" -> return (Traces_out.render_traces traces)
+        | "/diagram.json" -> return (Trace_session.render_traces tracer)
         | s               -> read_kv kv s
       in
       return (resp, (Body.of_string data))
@@ -222,7 +245,7 @@ struct
       return (Http.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
-  let handle (_, kv, _, tls, _ as ctx) conn req body =
+  let handle (_, kv, _, tls as ctx) conn req body =
     let path = Uri.path req.Http.Request.uri in
     match path with
     | "/rekey" ->
@@ -232,12 +255,12 @@ struct
     | s        -> dispatch ctx s
 
   let upgrade c irmin conf kv tcp =
-    let trace, get_trace = make_tracer () in
-    TLS.server_of_tcp_flow ~trace conf tcp >>= function
+    let tracer = Trace_session.create irmin in
+    TLS.server_of_tcp_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
       | `Error _ ->
-          Traces_store.trace irmin (get_trace ()) >> fail (Failure "tls init")
+          Trace_session.flush tracer >> fail (Failure "tls init")
       | `Ok tls  ->
-          let ctx = (c, kv, irmin, tls, get_trace) in
+          let ctx = (c, kv, tracer, tls) in
           let open Http.Server in
           listen { callback = handle ctx; conn_closed = fun _ () -> () } tls
 
