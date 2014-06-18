@@ -13,7 +13,7 @@
   <script type="text/javascript"
           src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
   <!-- <script src="raphael-min.js"></script> -->
-  <script type="text/javascript" 
+  <script type="text/javascript"
           src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js"></script>
   <script type="text/javascript" src="sequence-diagram-min.js"></script>
   <script type="text/javascript" src="gui.js"></script>
@@ -25,10 +25,10 @@
     <p>
       When connecting to a secure site (http<strong>s</strong>://), your browser
       automatically initiates a secure connection
-      using 
+      using
       <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">
         transport layer security (TLS)
-      </a>. 
+      </a>.
       The sequence diagram below shows you the
       <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security#TLS_handshake">
         TLS handshake
@@ -39,14 +39,14 @@
     </p>
     <p>
       The dotted lines represent unencrypted messages, while the solid
-      lines indicate encrypted messages. Clicking on a message 
+      lines indicate encrypted messages. Clicking on a message
       shows details about the exchanged data and the corresponding
       section of the <a href="https://tools.ietf.org/html/rfc5246">RFC 5246
         (TLS-1.2)</a> specification. Subsequent messages of the same type are
       condensed (marked with '*').
     </p>
     <p>
-      <input type="button" value="waiting for JS" id="request" 
+      <input type="button" value="waiting for JS" id="request"
            disabled="true"></input> lets our server send a <em>Hello
         Request</em> message to the client, and after 500 milliseconds the
       JavaScript fetches a new trace and updates the sequence
