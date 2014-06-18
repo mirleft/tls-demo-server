@@ -1,34 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-
-    <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
-
-    <title>OCaml-TLS demo server</title>
-  </head>
-
-  <body>
-    <header>
-      <div class="center">
-        <h1>OCaml-TLS demo server</h1>
+<head>
+  <meta charset="utf-8">
+  <!--[if lt IE 9]> <script src="./html5.js"></script><![endif]-->
+  <title>OCaml-TLS demo server</title>
+  <meta name="viewport" content="width=device-width">
+  <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+  <!-- <script src="jquery-1.11.1.min.js"></script> -->
+  <script type="text/javascript"
+          src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <!-- <script src="underscore-min.js"></script> -->
+  <script type="text/javascript"
+          src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+  <!-- <script src="raphael-min.js"></script> -->
+  <script type="text/javascript" 
+          src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js"></script>
+  <script type="text/javascript" src="sequence-diagram-min.js"></script>
+  <script type="text/javascript" src="gui.js"></script>
+  <script type="text/javascript">window.onload = initialise</script>
+</head>
+<body>
+  <section id="info">
+    <h1>OCaml-TLS demo server</h1>
+    <p>
+      When connecting to a secure site (http<strong>s</strong>://), your browser
+      automatically initiates a secure connection
+      using 
+      <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">
+        transport layer security (TLS)
+      </a>. 
+      The sequence diagram below shows you the
+      <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security#TLS_handshake">
+        TLS handshake
+      </a> that took place when your browser connected to this web
+      server. We traced it using
+      our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a>
+      implementation.
+    </p>
+    <p>
+      The dotted lines represent unencrypted messages, while the solid
+      lines indicate encrypted messages. Clicking on a message 
+      shows details about the exchanged data and the corresponding
+      section of the <a href="https://tools.ietf.org/html/rfc5246">RFC 5246
+        (TLS-1.2)</a> specification. Subsequent messages of the same type are
+      condensed (marked with '*').
+    </p>
+    <p>
+      <input type="button" value="waiting for JS" id="request" 
+           disabled="true"></input> lets our server send a <em>Hello
+        Request</em> message to the client, and after 500 milliseconds the
+      JavaScript fetches a new trace and updates the sequence
+      diagram. With some luck both requests used the same
+      connection. Our demo server picked a protocol version and
+      ciphersuite at random.
+    </p>
+  </section>
+  <section id="demo">
+    <div id="diagram">This should be a diagram! If you don't see it you need Javascript enabled</div>
+    <div id="demo-info">
+      <div id="details-div">
+        <h2>Message details</h2>
+        <p class="rfc-chapter chapter-NONE">Click the arrow labels!</p>
+        <ul id="details"><li>Intentionally left blank</li></ul>
       </div>
-    </header>
-
-    <div id="main">
-
-      <section id="info">
-        <p>When connecting to a secure site (http<b>s</b>://), your browser automatically initiates a secure connection (using <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">transport layer security (TLS)</a>). The sequence diagram below shows you the <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security#TLS_handshake">TLS handshake</a> that took place when your browser connected to this web server. We traced it using our <a href="https://github.com/mirleft/ocaml-tls">OCaml-TLS</a> implementation.</p>
-        <p>The dotted lines represent unencrypted messages, while the solid lines indicate encrypted messages. On the left the <a href="https://tools.ietf.org/html/rfc5246">RFC 5246 (TLS-1.2)</a> specification of the selected message type is presented. On the right further details about the exchanged message are shown. Subsequent messages of the same type are condensed (marked with '*').</p>
-        <p>The 'renegotiate' button below lets our server send a <i>Hello Request</i> message to the client, and after 500 milliseconds the JavaScript fetches a new trace and updates the sequence diagram. With some luck both requests used the same connection. Our demo server picked protocol version and ciphersuite at random.</p>
-        <input type="button" value="waiting for JS" id="request" disabled="true"></input>
-      </section>
-
-      <section id="demo">
-        <div id="rfc">
-          <para class="rfc-chapter chapter-NONE"><pre>Click inside the diagram!</pre></para>
-          <para class="rfc-chapter chapter-7-1"><pre>7.1.  Change Cipher Spec Protocol
+      <div id="rfc">
+      <h2>RFC 5246 specification</h2>
+      <p class="rfc-chapter chapter-NONE">Click the arrow labels!</p>
+      <para class="rfc-chapter chapter-7-1"><pre>7.1.  Change Cipher Spec Protocol
 
    The change cipher spec protocol exists to signal transitions in
    ciphering strategies.  The protocol consists of a single message,
@@ -689,28 +727,15 @@
    fragmented, compressed, and encrypted based on the current connection
    state.  The messages are treated as transparent data to the record
    layer.</pre></para>
-        </div>
-        <div id="diagram">This should be a diagram! If you don't see it you need Javascript enabled</div>
-        <div id="details-div">
-          <ul id="details"><li>Intentionally left blank</li></ul>
-        </div>
-        <br />
-      </section>
+      </div>
     </div>
+  </section>
 
-    <footer class="site-footer">
+  <footer class="site-footer">
       For research purposes we retain traces These are solely on the TLS layer and no IP addresses nor port numbers are captured whatsoever.
-        This <a href="https://github.com/mirleft/tls-demo-server">demo</a> runs on <a href="https://github.com/mirage/ocaml-cohttp">cohttp</a>, which runs on <a href="http://www.openmirage.org">mirage</a>. Please report any issues to <a href="https://github.com/mirleft/ocaml-tls/issues">GitHub issue tracker</a>.
+Please report any <a href="https://github.com/mirleft/ocaml-tls/issues">issues</a>.
+        This <a href="https://github.com/mirleft/tls-demo-server">demo</a> runs on <a href="https://github.com/mirage/ocaml-cohttp">cohttp</a>, which runs on <a href="http://www.openmirage.org">mirage</a>.
         We use <a href="http://jquery.com">jquery</a> and <a href="https://github.com/bramp/js-sequence-diagrams">js-sequence-diagrams</a>, which depends on <a href="http://raphaeljs.com/">Raphaël</a> and <a href="http://underscorejs.org/">Underscore.js</a>.
     </footer>
-    <!-- <script src="jquery-1.11.1.min.js"></script> -->
-    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
-    <!-- <script src="underscore-min.js"></script> -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
-    <!-- <script src="raphael-min.js"></script> -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js"></script>
-    <script src="sequence-diagram-min.js"></script>
-    <script src="gui.js"></script>
-    <script>window.onload = initialise</script>
   </body>
 </html>
