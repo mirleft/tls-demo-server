@@ -124,15 +124,13 @@ function initialise () {
 
     getData();
 
-    var req = document.getElementById("request")
-    request.onclick = function () {
+    $('#request').click( function () {
         if (! updating) {
             updating = true;
-            req.value = 'renegotiating...';
-            req.disabled = true;
+            $('#request').val('renegotiating...').attr('disabled', true);
             $.ajax({ url: "/rekey" }).done( function () {
                 setTimeout(getData, 500)
             })
         }
-    }
+    })
 }
