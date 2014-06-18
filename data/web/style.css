@@ -1,98 +1,79 @@
-html {
-    position: relative;
-    min-height: 100%;
+/* Reset a few things */
+
+*, *:before, *:after { -webkit-box-sizing: border-box; 
+                       -moz-box-sizing: border-box;
+                       box-sizing: border-box; }
+
+html,body,div,span,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,abbr,
+address,cite,code,del,dfn,em,img,ins,kbd,q,samp,small,strong,sub,sup,var,
+b,i,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,
+thead,tr,th,td,article,aside,canvas,details,figcaption,figure,footer,header,
+hgroup,menu,nav,section,summary,time,mark,audio,video,select
+{ margin: 0; padding: 0; border: 0; outline: 0;
+  font-size: 100%; 
+  font-family: inherit; 
+  font-weight: inherit;
+  background: transparent; color: inherit;
+  vertical-align: baseline; }
+
+ol, ul { list-style: none }
+
+/* Center body */
+html, body { top: 0px; right: 0px; bottom: 0px; left: 0px; height: 100%; 
+             margin: auto;}
+
+body { color: black; 
+       background-color: white;
+       font-size: 1em; 
+       line-height: 1.3125em;
+       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+       -webkit-text-size-adjust: none;
+       -moz-text-size-adjust: none;
+       text-size-adjust: none;
+       margin-top: 1px; /* force scroll bar */
+       min-width: 20em;
+       max-width: 42em;
+       margin-top: 2.25em;
+       text-align: left; }
+
+h1 { font-weight:normal; font-size:3em; line-height: 1.3125em;
+     text-transform: uppercase; }
+
+h2 { font-weight:bold; text-transform:uppercase }
+h2 { margin-top: 1.3125em; }
+section { margin-top: 1.3125em; margin-left:1.25em; 
+                  margin-right:1.25em; }
+
+footer { font-size:0.75em; line-height: 1.75em; 
+         margin-top:1.6666em;
+         margin-left:1.6666em; 
+         margin-right:1.6666em; padding-bottom:1.6666em}
+
+p, pre { margin-top: 1.3125em; }
+
+
+#demo > div { display: inline-block; vertical-align:top; }
+#diagram { width:50%; }
+#demo-info { width:49% }
+
+pre { font-family:monospace; font-size:0.75em; line-height:1.75em; }
+
+#details-div pre { 
+  white-space: pre-wrap;       /* css-3 */
+  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+  white-space: -pre-wrap;      /* Opera 4-6 */
+  white-space: -o-pre-wrap;    /* Opera 7 */
+  word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
 
-body {
-    font-size: 10px;
-    background: #fafafa;
-    color: #666;
-    height: 100%;
-    margin-bottom: 16px
-}
+input { margin-top: 1em; font: inherit; vertical-align:bottom; }
 
-a {
-    color: #2879d0;
-}
-a:hover {
-    color: #2268b2;
-}
+strong { font-weight:bold }
+em { font-style: italic }
 
-header {
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding-left: 20px;
-    font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-    background: #2e7bcf;
-    border-bottom: solid 1px #275da1;
-}
-
-header h1 {
-    letter-spacing: -1px;
-    font-size: 54px;
-    color: #fff;
-    line-height: 1;
-    margin-bottom: 0.2em;
-    font-weight: normal;
-}
-
-header h2 {
-    font-size: 26px;
-    color: #9ddcff;
-    font-weight: normal;
-    line-height: 1.3;
-    letter-spacing: 0;
-}
-
-#main {
-    padding: 10px;
-}
-
-#main h1 {
-    font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-    font-size: 2.8em;
-    letter-spacing: -1px;
-    color: #474747;
-    min-height: 100%;
-    margin-bottom: 8px
-}
-
-.center {
-    text-align: center;
-}
-
-#rfc {
-    float: left;
-    width: 35%;
-}
-
-.rfc-chapter {
-    display: none;
-    font-size: 9px;
-}
-
-#details-div {
-    float: left;
-    font-size: 10px;
-    width: 40%;
-}
-
-#diagram {
-    float: left;
-    width: 25%;
-}
-
-.site-footer {
-    border-top-style: dashed;
-    border-top-width: 1px;
-    font-size: 9px;
-    height: 16px;
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    text-align: center;
-}
-
-ul {
-    list-style-type: square;
+/* Mobile adjustements */
+@media only screen and (max-width: 540px) 
+{ 
+  #demo > div { display:block }
+  #diagram, #demo-info { width:100% }
 }

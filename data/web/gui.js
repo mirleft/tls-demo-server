@@ -115,7 +115,7 @@ function getData () {
       // Draw
       diagram.drawSVG($('#diagram')[0], options);
       updating = false;
-      $('#request').val('renegotiate!').attr('disabled', false);
+      $('#request').val('Renegotiate!').attr('disabled', false);
   });
 }
 
