@@ -9,6 +9,7 @@ let server = foreign "Unikernel.Main" @@ console @-> stackv4 @-> kv_ro @-> job
 
 let () =
   add_to_ocamlfind_libraries [
+    "mirage-clock-unix" ;
     "tls"; "tls.mirage";
     "irmin.unix" ;
     "tcpip.channel";
