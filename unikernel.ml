@@ -245,12 +245,12 @@ struct
       return (Http.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
-  let handle (_, kv, _, tls as ctx) conn req body =
+  let handle (_, _, _, tls as ctx) conn req body =
     let path = Uri.path req.Http.Request.uri in
     match path with
     | "/rekey" ->
         (TLS.rekey tls >>= function
-          | `Ok -> return (response "/rekey.txt", Body.of_string "intentionally left blank")
+          | `Ok -> dispatch ctx "/diagram.json"
           | `Eof -> fail (Failure "EOF while rekeying")
           | `Error _ -> fail (Failure "error while rekeying") )
     | "/"      -> dispatch ctx "/index.html"

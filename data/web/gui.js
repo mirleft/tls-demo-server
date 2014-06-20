@@ -93,44 +93,42 @@ function insertSignals (diagram, signals, data) {
 
 var data = [] ;
 
-function getData () {
-  $.ajax({ url: "/diagram.json" }).done( function( data1 ) {
-      var diagram = new Diagram();
-      var you = diagram.getActor('Client');
-      var me = diagram.getActor('Server');
+function processData (data1) {
+    var diagram = new Diagram();
+    var you = diagram.getActor('Client');
+    var me = diagram.getActor('Server');
 
-      data = data.concat (data1);
+    data = data.concat (data1);
 
-      var signals = _.map(data, function (x) { return process(me, you, x) });
-      insertSignals(diagram, signals, data);
+    var signals = _.map(data, function (x) { return process(me, you, x) });
+    insertSignals(diagram, signals, data);
 
-      var options = {
-          theme: 'simple'
-      };
+    var options = {
+        theme: 'simple'
+    };
 
-      $('#diagram, #details').empty ();
-      $('.rfc-chapter').hide() ;
-      $('.chapter-NONE').show();
+    $('#diagram, #details').empty ();
+    $('.rfc-chapter').hide() ;
+    $('.chapter-NONE').show();
 
-      // Draw
-      diagram.drawSVG($('#diagram')[0], options);
-      updating = false;
-      $('#request').val('Renegotiate!').attr('disabled', false);
-  });
+    // Draw
+    diagram.drawSVG($('#diagram')[0], options);
+    updating = false;
+    $('#request').val('Renegotiate!').attr('disabled', false);
 }
 
 function initialise () {
     $('.chapter-NONE').show();
 
-    getData();
-
     $('#request').click( function () {
         if (! updating) {
             updating = true;
             $('#request').val('renegotiating...').attr('disabled', true);
-            $.ajax({ url: "/rekey" }).done( function () {
-                setTimeout(getData, 500)
+            $.ajax({ url: "/rekey" }).done( function (data) {
+                processData(data)
             })
         }
     })
+
+    $.ajax({ url: "/diagram.json" }).done( function (data) { processData(data) })
 }
