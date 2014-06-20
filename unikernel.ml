@@ -249,8 +249,10 @@ struct
     let path = Uri.path req.Http.Request.uri in
     match path with
     | "/rekey" ->
-        TLS.rekey tls >|= fun () ->
-        (response "/rekey.txt", Body.of_string "intentionally left blank")
+        (TLS.rekey tls >>= function
+          | `Ok -> return (response "/rekey.txt", Body.of_string "intentionally left blank")
+          | `Eof -> fail (Failure "EOF while rekeying")
+          | `Error _ -> fail (Failure "error while rekeying") )
     | "/"      -> dispatch ctx "/index.html"
     | s        -> dispatch ctx s
 
