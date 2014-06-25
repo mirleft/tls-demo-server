@@ -10,7 +10,9 @@ let server = foreign "Unikernel.Main" @@ console @-> stackv4 @-> kv_ro @-> job
 let () =
   add_to_opam_packages [
     "mirage-clock-unix" ;
+    "tls" ;
     "irmin" ;
+    "tcpip" ;
     "mirage-http" ;
     "yojson" ;
   ] ;
