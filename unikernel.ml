@@ -249,10 +249,10 @@ struct
     let path = Uri.path req.Http.Request.uri in
     match path with
     | "/rekey" ->
-        (TLS.rekey tls >>= function
+        (TLS.reneg tls >>= function
           | `Ok -> dispatch ctx "/diagram.json"
-          | `Eof -> fail (Failure "EOF while rekeying")
-          | `Error _ -> fail (Failure "error while rekeying") )
+          | `Eof -> fail (Failure "EOF while renegotiating")
+          | `Error _ -> fail (Failure "error while renegotiating") )
     | "/"      -> dispatch ctx "/index.html"
     | s        -> dispatch ctx s
 
