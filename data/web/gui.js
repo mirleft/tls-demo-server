@@ -63,7 +63,7 @@ function process (me, you, in_record) {
         //note
         if (in_record.data == '')
             return new Diagram.Note(me, Diagram.PLACEMENT.LEFTOF, txt)
-        return new Diagram.Note(me, Diagram.PLACEMENT.LEFTOF, txt, null, in_record.data);
+        return new Diagram.Note(me, Diagram.PLACEMENT.LEFTOF, txt);
     }
 }
 
