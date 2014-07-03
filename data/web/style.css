@@ -56,9 +56,14 @@ p, pre { margin-top: 1.3125em; }
 #diagram { width:50%; }
 #demo-info { width:49% }
 
+.rfc-chapter h4, .rfc-chapter h3, .rfc-chapter h2, 
+.rfc-chapter em, .rfc-chapter p,
 pre { font-family:monospace; font-size:0.75em; line-height:1.75em; }
 
-#rfc, #details-div pre {
+.rfc-chapter h4, .rfc-chapter h3, .rfc-chapter h2 { margin-top: 1.75em }
+.rfc-chapter em { margin-top: 1.75em; display:block; }
+
+#rfc pre, #details-div pre {
   white-space: pre-wrap;       /* css-3 */
   white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
   white-space: -pre-wrap;      /* Opera 4-6 */
