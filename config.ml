@@ -10,7 +10,7 @@ let server = foreign "Unikernel.Main" @@ console @-> stackv4 @-> entropy @-> kv_
 let () =
   add_to_opam_packages [
     "mirage-clock-unix" ;
-    "mirage-entropy" ;
+    "mirage-entropy-unix" ;
     "tls" ;
     "irmin" ;
     "tcpip" ;
