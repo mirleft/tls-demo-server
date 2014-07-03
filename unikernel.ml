@@ -46,6 +46,15 @@ module Traces_out = struct
                             `String (List.map flatten_sexp stuff |> String.concat " ") ]
     | x -> `List [ `String "unknown" ; `String ("broken3 : " ^ (to_string_hum x)) ]
 
+  let split_string s =
+    let size = String.length s in
+    let mid = size / 2 in
+    String.([sub s 0 mid ; sub s (size - mid) mid])
+
+  let pp_cipher = function
+    | [ kex ; enc ; hash ] -> "KEX: " ^ kex ^ "\nENC: " ^ enc ^ "\nHASH: " ^ hash
+    | _                    -> "FAIL"
+
   let json_of_trace sexp : Yojson.json option =
     let record ~dir ~ty ~bytes = `Assoc [
         "event"     , `String "message"
@@ -74,31 +83,38 @@ module Traces_out = struct
     | List [Atom tag; List sexps] ->
       ( match (tag, sexps) with
         | "handshake-in", [Atom ty; List data ] ->
-          Some (record ~dir:"in" ~ty ~bytes:(List.map dict_dump data))
+           Some (record ~dir:"in" ~ty ~bytes:(List.map dict_dump data))
         | "handshake-out", [Atom ty; List data] ->
-          Some (record ~dir:"out" ~ty ~bytes:(List.map dict_dump data))
+           Some (record ~dir:"out" ~ty ~bytes:(List.map dict_dump data))
         | "change-cipher-spec-in", _ ->
-          Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:[])
+           Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:[])
         | "change-cipher-spec-out", _ ->
-          Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:[])
+           Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:[])
         | "application-data-in", bytes ->
-          Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
+           Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
         | "application-data-out", bytes ->
-          Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:app_data_out_subst)
+           Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:app_data_out_subst)
         | "master-secret", bytes ->
-          Some (note ~msg:"MasterSecret" ~data:(flatten_sexp (List bytes)))
+           let ms = List.map flatten_sexp bytes |>
+                      List.map split_string |>
+                      List.flatten |>
+                      String.concat "\n"
+           in
+           let msg = "Master secret:\n" ^ ms in
+           Some (note ~msg:msg ~data:"")
+        | "cipher", parts ->
+           let pp = List.map flatten_sexp parts |> pp_cipher in
+           Some (note ~msg:pp ~data:"")
         | _ -> None
       )
     | List [Atom tag; Atom ty] -> (* happens for empty messages: ServerHelloDone / HelloRequest *)
       ( match tag with
         | "handshake-in" ->
-          Some (record ~dir:"in" ~ty ~bytes:([]))
+           Some (record ~dir:"in" ~ty ~bytes:([]))
         | "handshake-out" ->
-          Some (record ~dir:"out" ~ty ~bytes:([]))
+           Some (record ~dir:"out" ~ty ~bytes:([]))
         | "version" ->
-          Some (note ~msg:ty ~data:"")
-        | "cipher" ->
-          Some (note ~msg:"Cipher" ~data:ty)
+           Some (note ~msg:ty ~data:"")
         | _ -> None )
     | _ -> None
 
