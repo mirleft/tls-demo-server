@@ -21,10 +21,13 @@ function lookupchap (msg) {
 
 function rfc_cb (sig, msg, moredata) {
     var chap = lookupchap(msg);
+    var last = sig.data[sig.data.length - 1]
     _.each (moredata, function (datum) {
         var dat = datum[0] != '' ? datum[0] + ': ' : '' ;
         var txt = dat + datum[1];
-        sig.data.push (txt);
+        if (txt != last)
+            sig.data.push (txt);
+        last = txt
     })
     return function () {
         $('.rfc-chapter').hide() ;
