@@ -59,8 +59,8 @@ function process (me, you, in_record) {
     } else if (in_record.event == 'note') {
         //note
         if (in_record.data == '')
-            return new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt)
-        return new Diagram.Note(me, Diagram.PLACEMENT.RIGHTOF, txt, null, in_record.data);
+            return new Diagram.Note(me, Diagram.PLACEMENT.LEFTOF, txt)
+        return new Diagram.Note(me, Diagram.PLACEMENT.LEFTOF, txt, null, in_record.data);
     }
 }
 
