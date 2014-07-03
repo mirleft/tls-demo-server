@@ -204,7 +204,7 @@ end
 
 module Main (C  : CONSOLE)
             (S  : STACKV4)
-(*            (E  : ENTROPY)*)
+            (E  : ENTROPY)
             (KV : KV_RO) =
 struct
 
@@ -275,9 +275,7 @@ struct
 
   let upgrade c irmin conf kv tcp =
     let tracer = Trace_session.create irmin in
-(*    let trace = fun c -> Printf.printf "trace: %s\n%!" (Sexplib.Sexp.to_string_hum c) in *)
     TLS.server_of_tcp_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
-(*    TLS.server_of_tcp_flow ~trace conf tcp >>= function *)
       | `Error _ ->
           Trace_session.flush tracer >> fail (Failure "tls init")
       | `Ok tls  ->
@@ -288,14 +286,13 @@ struct
   let port = try int_of_string Sys.argv.(1) with _ -> 4433
   let cert = try `Name Sys.argv.(2) with _ -> `Default
 
-  let start c stack (* e *) kv =
+  let start c stack e kv =
     lwt cert  = X509.certificate kv cert in
     let conf  = Tls.Config.server_exn ~certificate:cert () in
 
-(*    ( match_lwt E.entropy e 16 with
+    ( match_lwt E.entropy e 16 with
       | `Ok seed -> Nocrypto.Rng.reseed seed ; return_unit
-      | `Error _ -> fail (Invalid_argument "entropy broken") ) >>= fun () -> *)
-    Nocrypto.Rng.reseed (Cstruct.create 16) ;
+      | `Error _ -> fail (Invalid_argument "entropy broken") ) >>= fun () ->
 
     lwt irmin = Traces_store.create () in
     S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
