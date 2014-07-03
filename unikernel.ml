@@ -291,9 +291,7 @@ struct
     let conf  = Tls.Config.server_exn ~certificate:cert () in
 
     ( match_lwt E.entropy e 16 with
-      | `Ok seed ->
-         Printf.printf "seeding with" ; Cstruct.hexdump seed ;
-         Nocrypto.Rng.reseed seed ; return_unit
+      | `Ok seed -> Nocrypto.Rng.reseed seed ; return_unit
       | `Error _ -> fail (Invalid_argument "entropy broken") ) >>= fun () ->
 
     lwt irmin = Traces_store.create () in
