@@ -71,6 +71,8 @@ input { margin-top: 1em; font: inherit; vertical-align:bottom; }
 strong { font-weight:bold }
 em { font-style: italic }
 
+#diagram svg text { font-size:0.75em !important;}
+
 /* Mobile adjustements */
 @media only screen and (max-width: 540px)
 {
