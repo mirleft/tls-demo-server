@@ -57,7 +57,7 @@ p, pre { margin-top: 1.3125em; }
 #demo-info { width:49% }
 
 .rfc-chapter h4, .rfc-chapter h3, .rfc-chapter h2, 
-.rfc-chapter em, .rfc-chapter p,
+.rfc-chapter em, .rfc-chapter p, .rfc-chapter ul,
 pre { font-family:monospace; font-size:0.75em; line-height:1.75em; }
 
 .rfc-chapter h4, .rfc-chapter h3, .rfc-chapter h2 { margin-top: 1.75em }
