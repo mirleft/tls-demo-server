@@ -204,6 +204,7 @@ end
 
 module Main (C  : CONSOLE)
             (S  : STACKV4)
+            (E  : ENTROPY)
             (KV : KV_RO) =
 struct
 
@@ -285,9 +286,16 @@ struct
   let port = try int_of_string Sys.argv.(1) with _ -> 4433
   let cert = try `Name Sys.argv.(2) with _ -> `Default
 
-  let start c stack kv =
+  let start c stack e kv =
     lwt cert  = X509.certificate kv cert in
     let conf  = Tls.Config.server_exn ~certificate:cert () in
+
+    ( match_lwt E.entropy e 16 with
+      | `Ok seed ->
+         Printf.printf "seeding with" ; Cstruct.hexdump seed ;
+         Nocrypto.Rng.reseed seed ; return_unit
+      | `Error _ -> fail (Invalid_argument "entropy broken") ) >>= fun () ->
+
     lwt irmin = Traces_store.create () in
     S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
     S.listen stack
