@@ -10,6 +10,7 @@ let server = foreign "Unikernel.Main" @@ console @-> stackv4 @-> entropy @-> kv_
 let () =
   add_to_opam_packages [
     "mirage-clock-unix" ;
+    "mirage-entropy" ;
     "tls" ;
     "irmin" ;
     "tcpip" ;
@@ -18,6 +19,7 @@ let () =
   ] ;
   add_to_ocamlfind_libraries [
     "mirage-clock-unix" ;
+    "mirage-entropy-unix" ;
     "tls"; "tls.mirage";
     "irmin.unix" ;
     "tcpip.channel";
