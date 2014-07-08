@@ -217,16 +217,16 @@ struct
   module Body = Cohttp_lwt_body
 
   let read_kv kv name =
-    let file = "web/" ^
+    let file = "web" ^
                  ( match name with
-                   | "gui.js" -> "gui.js"
-                   | "sequence-diagram-min.js" -> "sequence-diagram-min.js"
-                   | "index.html" -> "index.html"
-                   | "style.css" -> "style.css"
-                   | "html5.js" -> "html5.js"
-                   | "jquery-1.11.1.min.js" -> "jquery-1.11.1.min.js"
-                   | "underscore-min.js" -> "underscore-min.js"
-                   | "raphael-min.js" -> "raphael-min.js" )
+                   | "/gui.js" -> "/gui.js"
+                   | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
+                   | "/index.html" -> "/index.html"
+                   | "/style.css" -> "/style.css"
+                   | "/html5.js" -> "/html5.js"
+                   | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
+                   | "/underscore-min.js" -> "/underscore-min.js"
+                   | "/raphael-min.js" -> "/raphael-min.js" )
     in
     KV.size kv file
     >>= function
