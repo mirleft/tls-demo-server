@@ -204,11 +204,10 @@ end
 
 module Main (C  : CONSOLE)
             (S  : STACKV4)
-            (E  : ENTROPY)
             (KV : KV_RO) =
 struct
 
-  module TLS  = Tls_mirage.Make_flow (S.TCPV4) (E)
+  module TLS  = Tls_mirage.Make (S.TCPV4)
   module X509 = Tls_mirage.X509 (KV) (Clock)
   module Chan = Channel.Make (TLS)
   module Http = HTTP.Make (Chan)
@@ -267,7 +266,7 @@ struct
     match path with
     | "/rekey" ->
         (TLS.reneg tls >>= function
-          | `Ok -> dispatch ctx "/diagram.json"
+          | `Ok () -> dispatch ctx "/diagram.json"
           | `Eof -> fail (Failure "EOF while renegotiating")
           | `Error _ -> fail (Failure "error while renegotiating") )
     | "/"      -> dispatch ctx "/index.html"
@@ -275,8 +274,8 @@ struct
 
   let upgrade c irmin conf kv tcp =
     let tracer = Trace_session.create irmin in
-    TLS.server_of_tcp_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
-      | `Error _ ->
+    TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
+      | `Error _ | `Eof ->
           Trace_session.flush tracer >> fail (Failure "tls init")
       | `Ok tls  ->
           let ctx = (c, kv, tracer, tls) in
@@ -286,10 +285,9 @@ struct
   let port = try int_of_string Sys.argv.(1) with _ -> 4433
   let cert = try `Name Sys.argv.(2) with _ -> `Default
 
-  let start c stack e kv =
-    TLS.attach_entropy e >>= fun () ->
+  let start c stack kv =
     lwt cert  = X509.certificate kv cert in
-    let conf  = Tls.Config.server_exn ~certificate:cert () in
+    let conf  = Tls.Config.server ~certificates:(`Single cert) () in
     lwt irmin = Traces_store.create () in
     S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
     S.listen stack
