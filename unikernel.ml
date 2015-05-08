@@ -217,17 +217,7 @@ struct
   module Body = Cohttp_lwt_body
 
   let read_kv kv name =
-    let file = "web" ^
-                 ( match name with
-                   | "/gui.js" -> "/gui.js"
-                   | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
-                   | "/index.html" -> "/index.html"
-                   | "/style.css" -> "/style.css"
-                   | "/html5.js" -> "/html5.js"
-                   | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
-                   | "/underscore-min.js" -> "/underscore-min.js"
-                   | "/raphael-min.js" -> "/raphael-min.js" )
-    in
+    let file = "web" ^ name in
     KV.size kv file
     >>= function
       | `Error (KV.Unknown_key _) -> fail (Invalid_argument name)
