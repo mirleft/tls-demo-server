@@ -7,53 +7,62 @@ module Traces_out = struct
 
   open Sexplib.Sexp
 
-  let bytes_dump = function
-    | List bs ->
-        let repr =
-          List.map (fun (List bytes) ->
-            `String (List.map (fun (Atom x) -> x) bytes |> String.concat " "))
-          bs in
-        `List repr
-
-  let rec flatten_sexp = function
+  let rec flatten_sexp comb = function
     | Atom x  -> x
-    | List xs -> List.map flatten_sexp xs |> String.concat " "
-
-  let rec implode str =
-    let rec esc = function
-      | []             -> [""]
-      | '\r'::'\n'::xs
-      | '\n'::xs       -> "\n" :: esc xs
-      | x::xs          -> Char.escaped x :: esc xs in
-    String.concat "" (esc str)
-
-  let hex_sexp_to_string xs =
-    let to_byte str =
-      char_of_int (Scanf.sscanf str "%x" (fun x -> x)) in
-    xs |> List.map (fun (List bs) -> List.map (fun (Atom str) -> to_byte str) bs)
-       |> List.concat
-       |> implode
+    | List xs -> List.map (flatten_sexp " ") xs |> String.concat comb
 
   let app_data_to_string bytes =
-    [ `List [ `String "" ; `String (hex_sexp_to_string bytes)]]
+    [ `List [ `String "" ; `String bytes]]
+
+  let to_hex bytes =
+    let c_to_h c idx s =
+      let v_to_h = function
+        | x when x < 10 -> char_of_int (x + 48)
+        | x -> char_of_int (x + 55)
+      in
+      let i = int_of_char c in
+      let high = (0xf0 land i) lsr 4
+      and low = 0x0f land i
+      in
+      Bytes.set s idx (v_to_h high) ;
+      Bytes.set s (succ idx) (v_to_h low)
+    in
+    if String.length bytes = 0 then
+      ""
+    else
+      let s = Bytes.make (String.length bytes * 3 - 1) ' ' in
+      for i = 0 to pred (String.length bytes) do
+        c_to_h (String.get bytes i) (i * 3) s
+      done ;
+      s
+
+  let maybe_add pre post =
+    pre ^ (if String.length post > 0 then ": " ^ post else "")
+
+  let exts_dump = function
+    | List [Atom "UnknownExtension" ; List [ Atom n ; Atom  value] ] ->
+       maybe_add ("Extension " ^ n) (to_hex value)
+    | List [Atom tag ; sexps] ->
+       maybe_add tag (flatten_sexp ", " sexps)
+    | sexp -> to_string_hum sexp
 
   let dict_dump = function
-    | List [Atom tag ; Atom value] -> `List [ `String tag ; `String value ]
-    | List [Atom tag ; List value] ->
-      `List [ `String tag ; `String ((List.map flatten_sexp value) |> String.concat ", ") ]
-    | List [Atom tag ; x ] -> `List [ `String tag ; `String (": broken2 : " ^ (to_string_hum x)) ]
-    | List stuff -> `List [ `String "" ;
-                            `String (List.map flatten_sexp stuff |> String.concat " ") ]
-    | x -> `List [ `String "unknown" ; `String ("broken3 : " ^ (to_string_hum x)) ]
+    | List [Atom "random" ; Atom value] ->
+       `List [ `String "random" ; `String (to_hex value) ]
+    | List [Atom "sessionid" ; List [Atom value]] ->
+       `List [ `String "sessionid" ; `String (to_hex value) ]
+    | List [Atom "sessionid" ; List []] ->
+       `List [ `String "sessionid" ; `String "" ]
+    | List [Atom "extensions" ; List exts] ->
+       let exts = String.concat ";\n  " (List.map exts_dump exts) in
+       `List [ `String "extensions" ; `String exts ]
+    | List [Atom tag ; sexps] ->
+       `List [ `String tag ; `String (flatten_sexp ", " sexps) ]
+    | sexp -> `List [ `String "unknown" ; `String (to_string_hum sexp) ]
 
-  let split_string s =
-    let size = String.length s in
-    let mid = size / 2 in
-    String.([sub s 0 mid ; sub s (size - mid) mid])
-
-  let pp_cipher = function
-    | [ kex ; enc ; hash ] -> "KEX: " ^ kex ^ "\nENC: " ^ enc ^ "\nHASH: " ^ hash
-    | _                    -> "FAIL"
+  let sexp_to_hex = function
+    | Atom x -> `List [ `String "" ; `String (to_hex x)]
+    | List _ -> `List [ `String "" ; `String "cannot sexp_to_hex of a list" ]
 
   let json_of_trace sexp : Yojson.json option =
     let record ~dir ~ty ~bytes = `Assoc [
@@ -62,60 +71,59 @@ module Traces_out = struct
       ; "message"   , `String ty
       ; "data"      , `List bytes
     ]
-    and state ~dir ~ver:(Atom v) ~mach ~rekey =
-      `Assoc [
-          "event"     , `String "state"
-        ; "direction" , `String dir
-        ; "version"   , `String v
-        (* XXX decode machina into something usable *)
-        ; "machina"   , `String (to_string mach)
-      ]
-    and note ~msg ~data =
-      `Assoc [
-          "event"     , `String "note"
-        ; "message"   , `String msg
-        ; "data"      , `String data
-      ]
+    and note ~msg ~data = `Assoc [
+        "event"     , `String "note"
+      ; "message"   , `String msg
+      ; "data"      , `String data
+    ]
+    and app_data_out_subst =
+      [ `List [`String ""; `String "(data on this page)" ]]
     in
-    let app_data_out_subst =
-      [ `List [`String ""; `String "(data on this page)" ]] in
     match sexp with
-    | List [Atom tag; List sexps] ->
-      ( match (tag, sexps) with
-        | "handshake-in", [Atom ty; List data ] ->
-           Some (record ~dir:"in" ~ty ~bytes:(List.map dict_dump data))
-        | "handshake-out", [Atom ty; List data] ->
-           Some (record ~dir:"out" ~ty ~bytes:(List.map dict_dump data))
+    | List [Atom tag; sexps] ->
+      ( match tag, sexps with
+        | "handshake-in", List [Atom "ClientHello"; List data ] ->
+           Some (record ~dir:"in" ~ty:"ClientHello" ~bytes:(List.map dict_dump data))
+        | "handshake-out", List [Atom "ServerHello"; List data] ->
+           Some (record ~dir:"out" ~ty:"ServerHello" ~bytes:(List.map dict_dump data))
+        | "handshake-out", List [Atom "Certificate"; List data] ->
+           Some (record ~dir:"out" ~ty:"Certificate" ~bytes:(List.map sexp_to_hex data))
+        | "handshake-in", List [ Atom ty ; Atom data ] ->
+           let data = to_hex data in
+           Some (record ~dir:"in" ~ty ~bytes:[`List [`String "" ; `String data]])
+        | "handshake-out", List [ Atom ty ; Atom data ] ->
+           let data = to_hex data in
+           Some (record ~dir:"out" ~ty ~bytes:[`List [`String "" ; `String data]])
+        | "handshake-in", Atom ty ->
+           Some (record ~dir:"in" ~ty ~bytes:[])
+        | "handshake-out", Atom ty ->
+           Some (record ~dir:"out" ~ty ~bytes:[])
         | "change-cipher-spec-in", _ ->
            Some (record ~dir:"in" ~ty:"ChangeCipherSpec" ~bytes:[])
         | "change-cipher-spec-out", _ ->
            Some (record ~dir:"out" ~ty:"ChangeCipherSpec" ~bytes:[])
-        | "application-data-in", bytes ->
+        | "application-data-in", Atom bytes ->
            Some (record ~dir:"in" ~ty:"ApplicationData" ~bytes:(app_data_to_string bytes))
-        | "application-data-out", bytes ->
+        | "application-data-out", Atom _ ->
            Some (record ~dir:"out" ~ty:"ApplicationData" ~bytes:app_data_out_subst)
-        | "master-secret", bytes ->
-           let ms = List.map flatten_sexp bytes |>
-                      List.map split_string |>
-                      List.flatten |>
-                      String.concat "\n"
+        | "master-secret", Atom bytes ->
+           let ms =
+             let parts =
+               String.([ sub bytes 0 8 ; sub bytes 8 8 ; sub bytes 16 8 ;
+                         sub bytes 24 8 ; sub bytes 32 8 ; sub bytes 40 8 ])
+             in
+             let hex = List.map to_hex parts in
+             String.concat "\n" hex
            in
            let msg = "Master secret:\n" ^ ms in
            Some (note ~msg:msg ~data:"")
-        | "cipher", parts ->
-           let pp = List.map flatten_sexp parts |> pp_cipher in
+        | "cipher", List [ Atom kex ; papr ] ->
+           let pp = "KEX: " ^ kex ^ "\n" ^ (flatten_sexp " " papr) in
            Some (note ~msg:pp ~data:"")
-        | _ -> None
-      )
-    | List [Atom tag; Atom ty] -> (* happens for empty messages: ServerHelloDone / HelloRequest *)
-      ( match tag with
-        | "handshake-in" ->
-           Some (record ~dir:"in" ~ty ~bytes:([]))
-        | "handshake-out" ->
-           Some (record ~dir:"out" ~ty ~bytes:([]))
-        | "version" ->
+        | "version", Atom ty ->
            Some (note ~msg:ty ~data:"")
-        | _ -> None )
+        | _ -> None
+       )
     | _ -> None
 
   let render jsons = Yojson.to_string (`List jsons)
