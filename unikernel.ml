@@ -123,31 +123,8 @@ module Traces_out = struct
 end
 
 module Traces_store = struct
-
   open Sexplib
-  open Irmin_unix
-
-  module Contents_sexp : IrminContents.S with type t = Sexp.t = struct
-
-    module Ident = IrminIdent.Make ( struct
-      type t = Sexp.t
-      let t_of_sexp s = s
-      and sexp_of_t s = s
-      let compare = compare
-    end )
-    include Ident
-
-    let merge = IrminMerge.default (module Ident)
-  end
-
-  module Git = IrminGit.FS ( struct
-    let root = Some "./trace"
-    let bare = true
-  end )
-
-  module Store = Git.Make (IrminKey.SHA1) (Contents_sexp) (IrminTag.String)
-
-  let create = Store.create
+  let root = "./trace"
 
   let interesting sexp =
     let open Sexp in
@@ -155,18 +132,31 @@ module Traces_store = struct
     | List (Atom "application-data-out" ::_) -> false
     | _                                      -> true
 
-  let save t id sexps =
-    let ts   = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
-    let sexp = Sexp.List sexps in
-    Store.update t [ id ; ts ] sexp
-
+  let save id sexps =
+    let ts = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
+    let dir = Filename.concat root id in
+    (if not (Sys.file_exists root && Sys.is_directory root) then
+       Lwt_unix.mkdir root 0o755
+     else
+       Lwt.return_unit) >>= fun () ->
+    (if not (Sys.file_exists dir && Sys.is_directory dir) then
+       Lwt_unix.mkdir dir 0o755
+     else
+       Lwt.return_unit) >>= fun () ->
+    let file = Filename.concat dir ts in
+    (if Sys.file_exists file then
+       Lwt_unix.openfile file [Unix.O_WRONLY ; Unix.O_APPEND] 0o644
+     else
+       Lwt_unix.openfile file [Unix.O_WRONLY ; Unix.O_CREAT] 0o644) >>= fun fd ->
+    let str = String.concat "\n" (List.map Sexp.to_string_hum sexps) in
+    Lwt_unix.write fd str 0 (String.length str) >>= fun _ ->
+    Lwt_unix.close fd
 end
 
 module Trace_session = struct
 
   type t = {
     id    : string ;
-    store : Traces_store.Store.t ;
     mutable jsons : Yojson.json list ;
     mutable sexps : Sexplib.Sexp.t list
   }
@@ -175,9 +165,8 @@ module Trace_session = struct
     Printf.sprintf "%016Lx" @@
       Cstruct.BE.get_uint64 (Nocrypto.Rng.generate 8) 0
 
-  let create store = {
+  let create () = {
     id    = random_tag () ;
-    store = store ;
     jsons = [] ;
     sexps = []
   }
@@ -192,7 +181,7 @@ module Trace_session = struct
   let flush t =
     let sexps = List.rev t.sexps in
     t.sexps <- [] ;
-    Traces_store.save t.store t.id sexps
+    Traces_store.save t.id sexps
 
   let render_traces t =
     let jsons = List.rev t.jsons in
@@ -280,8 +269,8 @@ struct
     | "/"      -> dispatch ctx "/index.html"
     | s        -> dispatch ctx s
 
-  let upgrade c irmin conf kv tcp =
-    let tracer = Trace_session.create irmin in
+  let upgrade c conf kv tcp =
+    let tracer = Trace_session.create () in
     TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
       | `Error _ | `Eof ->
           Trace_session.flush tracer >> fail (Failure "tls init")
@@ -296,8 +285,7 @@ struct
   let start c stack kv =
     lwt cert  = X509.certificate kv cert in
     let conf  = Tls.Config.server ~certificates:(`Single cert) ~reneg:true () in
-    lwt irmin = Traces_store.create () in
-    S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
+    S.listen_tcpv4 stack port (upgrade c conf kv) ;
     S.listen stack
 
 end
