@@ -204,16 +204,13 @@ end
 
 module Main (C  : CONSOLE)
             (S  : STACKV4)
-            (E  : ENTROPY)
             (KV : KV_RO) =
 struct
 
-  module TLS  = Tls_mirage.Make_flow (S.TCPV4) (E)
+  module TLS  = Tls_mirage.Make (S.TCPV4)
   module X509 = Tls_mirage.X509 (KV) (Clock)
-  module Chan = Channel.Make (TLS)
-  module Http = HTTP.Make (Chan)
+  module Http = Cohttp_mirage.Server (TLS)
 
-  open Http
   module Body = Cohttp_lwt_body
 
   let read_kv kv name =
@@ -251,7 +248,7 @@ struct
     with _ -> "text/plain"
 
   let response path =
-    Http.Response.make
+    Cohttp_lwt.Response.make
       ~status:`OK
       ~headers:(Cohttp.Header.of_list [
         "Content-type" , content_type path
@@ -269,15 +266,15 @@ struct
       in
       return (resp, (Body.of_string data))
     with _ ->
-      return (Http.Response.make ~status:`Internal_server_error (),
+      return (Cohttp_lwt.Response.make ~status:`Internal_server_error (),
               Body.of_string "<html><head>Server Error</head></html>")
 
   let handle (_, _, _, tls as ctx) conn req body =
-    let path = Uri.path req.Http.Request.uri in
+    let path = Uri.path req.Cohttp_lwt.Request.uri in
     match path with
     | "/rekey" ->
         (TLS.reneg tls >>= function
-          | `Ok -> dispatch ctx "/diagram.json"
+          | `Ok () -> dispatch ctx "/diagram.json"
           | `Eof -> fail (Failure "EOF while renegotiating")
           | `Error _ -> fail (Failure "error while renegotiating") )
     | "/"      -> dispatch ctx "/index.html"
@@ -285,21 +282,20 @@ struct
 
   let upgrade c irmin conf kv tcp =
     let tracer = Trace_session.create irmin in
-    TLS.server_of_tcp_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
-      | `Error _ ->
+    TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
+      | `Error _ | `Eof ->
           Trace_session.flush tracer >> fail (Failure "tls init")
       | `Ok tls  ->
-          let ctx = (c, kv, tracer, tls) in
-          let open Http.Server in
-          listen { callback = handle ctx; conn_closed = fun _ () -> () } tls
+         let ctx = (c, kv, tracer, tls) in
+         let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
+         Http.listen thing tls
 
   let port = try int_of_string Sys.argv.(1) with _ -> 4433
-  let cert = try `Name Sys.argv.(2) with _ -> `Default
+  let cert = try `Name Sys.argv.(2) with _ -> (`Name "tls/server")
 
-  let start c stack e kv =
-    TLS.attach_entropy e >>= fun () ->
+  let start c stack kv =
     lwt cert  = X509.certificate kv cert in
-    let conf  = Tls.Config.server_exn ~certificate:cert () in
+    let conf  = Tls.Config.server ~certificates:(`Single cert) ~reneg:true () in
     lwt irmin = Traces_store.create () in
     S.listen_tcpv4 stack port (upgrade c irmin conf kv) ;
     S.listen stack
