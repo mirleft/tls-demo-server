@@ -220,7 +220,8 @@ struct
                    | "/html5.js" -> "/html5.js"
                    | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
                    | "/underscore-min.js" -> "/underscore-min.js"
-                   | "/raphael-min.js" -> "/raphael-min.js" )
+                   | "/raphael-min.js" -> "/raphael-min.js"
+                   | _ -> "/index.html" )
     in
     KV.size kv file
     >>= function
