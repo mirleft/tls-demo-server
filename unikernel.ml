@@ -1,10 +1,7 @@
-
-open Lwt
-open V1_LWT
-
+open Mirage_types_lwt
+open Lwt.Infix
 
 module Traces_out = struct
-
   open Sexplib.Sexp
 
   let rec flatten_sexp comb = function
@@ -34,7 +31,7 @@ module Traces_out = struct
       for i = 0 to pred (String.length bytes) do
         c_to_h (String.get bytes i) (i * 3) s
       done ;
-      s
+      Bytes.to_string s
 
   let maybe_add pre post =
     pre ^ (if String.length post > 0 then ": " ^ post else "")
@@ -47,8 +44,10 @@ module Traces_out = struct
     | sexp -> to_string_hum sexp
 
   let dict_dump = function
-    | List [Atom "random" ; Atom value] ->
-       `List [ `String "random" ; `String (to_hex value) ]
+    | List [Atom "client_random" ; Atom value] ->
+       `List [ `String "client_random" ; `String (to_hex value) ]
+    | List [Atom "server_random" ; Atom value] ->
+       `List [ `String "server_random" ; `String (to_hex value) ]
     | List [Atom "sessionid" ; List [Atom value]] ->
        `List [ `String "sessionid" ; `String (to_hex value) ]
     | List [Atom "sessionid" ; List []] ->
@@ -127,85 +126,34 @@ module Traces_out = struct
     | _ -> None
 
   let render jsons = Yojson.to_string (`List jsons)
-
-end
-
-module Traces_store = struct
-  open Sexplib
-  let root = "./trace"
-
-  let interesting sexp =
-    let open Sexp in
-    match sexp with
-    | List (Atom "application-data-out" ::_) -> false
-    | _                                      -> true
-
-  let save id sexps =
-    let ts = Printf.sprintf "%.05f" (Unix.gettimeofday ()) in
-    let dir = Filename.concat root id in
-    (if not (Sys.file_exists root && Sys.is_directory root) then
-       Lwt_unix.mkdir root 0o755
-     else
-       Lwt.return_unit) >>= fun () ->
-    (if not (Sys.file_exists dir && Sys.is_directory dir) then
-       Lwt_unix.mkdir dir 0o755
-     else
-       Lwt.return_unit) >>= fun () ->
-    let file = Filename.concat dir ts in
-    (if Sys.file_exists file then
-       Lwt_unix.openfile file [Unix.O_WRONLY ; Unix.O_APPEND] 0o644
-     else
-       Lwt_unix.openfile file [Unix.O_WRONLY ; Unix.O_CREAT] 0o644) >>= fun fd ->
-    let str = String.concat "\n" (List.map Sexp.to_string_hum sexps) in
-    Lwt_unix.write fd str 0 (String.length str) >>= fun _ ->
-    Lwt_unix.close fd
 end
 
 module Trace_session = struct
-
   type t = {
-    id    : string ;
     mutable jsons : Yojson.json list ;
-    mutable sexps : Sexplib.Sexp.t list
   }
 
-  let random_tag () =
-    Printf.sprintf "%016Lx" @@
-      Cstruct.BE.get_uint64 (Nocrypto.Rng.generate 8) 0
-
   let create () = {
-    id    = random_tag () ;
     jsons = [] ;
-    sexps = []
   }
 
   let trace t sexp =
     ( match Traces_out.json_of_trace sexp with
       | None      -> ()
-      | Some json -> t.jsons <- json :: t.jsons ) ;
-    ( if Traces_store.interesting sexp then
-      t.sexps <- sexp :: t.sexps )
-
-  let flush t =
-    let sexps = List.rev t.sexps in
-    t.sexps <- [] ;
-    Traces_store.save t.id sexps
+      | Some json -> t.jsons <- json :: t.jsons )
 
   let render_traces t =
     let jsons = List.rev t.jsons in
     t.jsons <- [] ;
     Traces_out.render jsons
-
 end
 
 
-module Main (C  : CONSOLE)
-            (S  : STACKV4)
-            (KV : KV_RO) =
-struct
+module Main (C  : PCLOCK) (S  : STACKV4) (KV : KV_RO) = struct
 
   module TLS  = Tls_mirage.Make (S.TCPV4)
-  module X509 = Tls_mirage.X509 (KV) (Clock)
+  module X509 = Tls_mirage.X509 (KV) (C)
+
   module Http = Cohttp_mirage.Server (TLS)
 
   module Body = Cohttp_lwt_body
@@ -223,14 +171,16 @@ struct
                    | "/raphael-min.js" -> "/raphael-min.js"
                    | _ -> "/index.html" )
     in
-    KV.size kv file
-    >>= function
-      | `Error (KV.Unknown_key _) -> fail (Invalid_argument name)
-      | `Ok size ->
-         KV.read kv file 0 (Int64.to_int size)
-         >>= function
-           | `Error (KV.Unknown_key _) -> fail (Invalid_argument name)
-           | `Ok bufs -> return (Cstruct.copyv bufs)
+    KV.size kv file >>= function
+    | Error e ->
+      Logs_lwt.warn (fun m -> m "failed size of %s: %a" file KV.pp_error e) >>= fun () ->
+      Lwt.fail (Invalid_argument name)
+    | Ok size ->
+      KV.read kv file 0L size >>= function
+      | Error e ->
+        Logs_lwt.warn (fun m -> m "failed read of %s: %a" file KV.pp_error e) >>= fun () ->
+        Lwt.fail (Invalid_argument name)
+      | Ok bufs -> Lwt.return (Cstruct.concat bufs)
 
   let content_type path =
     let open String in
@@ -246,55 +196,83 @@ struct
     with _ -> "text/plain"
 
   let response path =
-    Cohttp_lwt.Response.make
+    Cohttp.Response.make
       ~status:`OK
       ~headers:(Cohttp.Header.of_list [
         "Content-type" , content_type path
       ; "Connection"   , "Keep-Alive"
       ]) ()
 
-  let dispatch (c, kv, tracer, _) path =
-    lwt () = Trace_session.flush tracer in
-    let resp   = response path in
-    try_lwt
-      lwt data =
-        match path with
-        | "/diagram.json" -> return (Trace_session.render_traces tracer)
-        | s               -> read_kv kv s
-      in
-      return (resp, (Body.of_string data))
-    with _ ->
-      return (Cohttp_lwt.Response.make ~status:`Internal_server_error (),
-              Body.of_string "<html><head>Server Error</head></html>")
+  let log_request ip port request response =
+    let open Cohttp in
+    let sget k = match Header.get request.Request.headers k with
+      | None -> "-"
+      | Some x -> x
+    in
+    Logs_lwt.info (fun m ->
+        m "%a:%d \"%s %s %s\" %d \"%s\" \"%s\""
+          Ipaddr.V4.pp_hum ip port
+          (Code.string_of_method request.Request.meth)
+          request.Request.resource
+          (Code.string_of_version request.Request.version)
+          (Code.code_of_status response.Response.status)
+          (sget "Referer")
+          (sget "User-Agent"))
 
-  let handle (_, _, _, tls as ctx) conn req body =
-    let path = Uri.path req.Cohttp_lwt.Request.uri in
-    match path with
-    | "/rekey" ->
-        (TLS.reneg tls >>= function
-          | `Ok () -> dispatch ctx "/diagram.json"
-          | `Eof -> fail (Failure "EOF while renegotiating")
-          | `Error _ -> fail (Failure "error while renegotiating") )
-    | "/"      -> dispatch ctx "/index.html"
-    | s        -> dispatch ctx s
+  let dispatch (ip, port, kv, tracer, _) path =
+    Lwt.catch (fun () ->
+        let resp = response path in
+        (match path with
+         | "/diagram.json" -> Lwt.return (Trace_session.render_traces tracer)
+         | s               -> read_kv kv s >|= Cstruct.to_string) >|= fun data ->
+        (resp, (Body.of_string data)))
+      (fun _ ->
+         Lwt.return (Cohttp.Response.make ~status:`Internal_server_error (),
+                     Body.of_string "<html><head>Server Error</head></html>"))
 
-  let upgrade c conf kv tcp =
+  let handle (ip, port, _, _, tls as ctx) conn req body =
+    let path = req.Cohttp.Request.resource in
+    (match path with
+     | "/rekey" ->
+       (TLS.reneg tls >>= function
+         | Ok () -> dispatch ctx "/diagram.json"
+         | Error e ->
+           Logs_lwt.warn (fun m -> m "%a:%d failed renegotation %a" Ipaddr.V4.pp_hum ip port TLS.pp_write_error e) >|= fun () ->
+           (Cohttp.Response.make ~status:`Internal_server_error (), Body.of_string "<html><head>Server Error</head></html>"))
+     | "/"      -> dispatch ctx "/index.html"
+     | s        -> dispatch ctx s) >>= fun (res, body) ->
+    log_request ip port req res >|= fun () ->
+    (res, body)
+
+
+  let tls_epoch_to_line epoch =
+    let open Tls in
+    let version = epoch.Core.protocol_version
+    and cipher = epoch.Core.ciphersuite
+    in
+    Sexplib.Sexp.(to_string_hum (List [
+        Core.sexp_of_tls_version version ;
+        Ciphersuite.sexp_of_ciphersuite cipher ]))
+
+  let upgrade conf kv tcp =
     let tracer = Trace_session.create () in
+    let ip, port = S.TCPV4.dst tcp in
     TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
-      | `Error _ | `Eof ->
-          Trace_session.flush tracer >> fail (Failure "tls init")
-      | `Ok tls  ->
-         let ctx = (c, kv, tracer, tls) in
-         let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
-         Http.listen thing tls
+    | Error e ->
+      Logs_lwt.warn (fun m -> m "%a:%d failed TLS handshake %a" Ipaddr.V4.pp_hum ip port TLS.pp_write_error e)
+    | Ok tls  ->
+      (match TLS.epoch tls with
+       | Ok epoch -> Logs_lwt.info (fun m -> m "%a:%d established TLS %s" Ipaddr.V4.pp_hum ip port (tls_epoch_to_line epoch))
+       | Error () -> Lwt.return_unit) >>= fun () ->
+      let ctx = (ip, port, kv, tracer, tls) in
+      let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
+      Http.listen thing tls
 
-  let port = try int_of_string Sys.argv.(1) with _ -> 4433
-  let cert = try `Name Sys.argv.(2) with _ -> (`Name "tls/server")
-
-  let start c stack kv =
-    lwt cert  = X509.certificate kv cert in
+  let start clock stack kv _ =
+    X509.certificate kv (`Name (Key_gen.cert ())) >>= fun cert ->
     let conf  = Tls.Config.server ~certificates:(`Single cert) ~reneg:true () in
-    S.listen_tcpv4 stack port (upgrade c conf kv) ;
+    let port = Key_gen.port () in
+    Logs.info (fun m -> m "now starting up, listening on %d" port) ;
+    S.listen_tcpv4 stack port (upgrade conf kv) ;
     S.listen stack
-
 end
