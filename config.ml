@@ -16,7 +16,7 @@ let cert =
 let stack =
   if_impl Key.is_unix
     (socket_stackv4 [Ipaddr.V4.any])
-    (generic_stackv4 default_network)
+    (static_ipv4_stack ~arp:farp default_network)
 
 let server =
   let keys = Key.([ abstract port ; abstract cert ]) in
@@ -25,7 +25,7 @@ let server =
 
 let () =
   let packages = [
-    package "mirage-http" ;
+    package "cohttp-mirage" ;
     package "yojson" ;
     package "sexplib" ;
     package ~sublibs:["mirage"] "tls" ;

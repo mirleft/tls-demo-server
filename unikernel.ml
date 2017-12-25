@@ -156,7 +156,7 @@ module Main (C  : PCLOCK) (S  : STACKV4) (KV : KV_RO) = struct
 
   module Http = Cohttp_mirage.Server (TLS)
 
-  module Body = Cohttp_lwt_body
+  module Body = Cohttp_lwt.Body
 
   let read_kv kv name =
     let file = "web" ^
