@@ -39,7 +39,7 @@ let logger =
   syslog_udp ~config:(syslog_config ~truncate:1484 "tls.nqsb.io") stack
 
 let server =
-  foreign ~deps:[abstract nocrypto ; abstract logger] ~keys "Unikernel.Main" @@
+  foreign ~deps:[abstract nocrypto ; abstract logger ; abstract app_info] ~keys "Unikernel.Main" @@
   random @-> pclock @-> time @-> stackv4 @-> kv_ro @-> job
 
 let () =
