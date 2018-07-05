@@ -149,10 +149,10 @@ module Trace_session = struct
 end
 
 
-module Main (C  : PCLOCK) (S  : STACKV4) (KV : KV_RO) = struct
+module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = struct
+  module D = Dns_mirage_certify.Make(R)(P)(T)(S)
 
   module TLS  = Tls_mirage.Make (S.TCPV4)
-  module X509 = Tls_mirage.X509 (KV) (C)
 
   module Http = Cohttp_mirage.Server (TLS)
 
@@ -268,11 +268,13 @@ module Main (C  : PCLOCK) (S  : STACKV4) (KV : KV_RO) = struct
       let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
       Http.listen thing tls
 
-  let start clock stack kv _ =
-    X509.certificate kv (`Name (Key_gen.cert ())) >>= fun cert ->
-    let conf  = Tls.Config.server ~certificates:(`Single cert) ~reneg:true () in
+  let start _ pclock _time stack kv _ =
+    D.retrieve_certificate stack pclock ~dns_key:(Key_gen.dns_key ())
+      ~hostname:(Key_gen.hostname ()) ~key_seed:(Key_gen.key_seed ())
+      (Key_gen.dns_server ()) (Key_gen.dns_port ()) >>= fun own_cert ->
+    let config = Tls.Config.server ~certificates:own_cert () in
     let port = Key_gen.port () in
     Logs.info (fun m -> m "now starting up, listening on %d" port) ;
-    S.listen_tcpv4 stack port (upgrade conf kv) ;
+    S.listen_tcpv4 stack port (upgrade config kv) ;
     S.listen stack
 end

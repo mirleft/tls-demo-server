@@ -8,10 +8,30 @@ let port =
   let doc = Key.Arg.info ~doc:"Listening port." ["port"] in
   Key.(create "port" Arg.(opt int 443 doc))
 
-let cert =
-  let doc = Key.Arg.info ~doc:"path to certificates below data (default: tls/server)"
-      ["cert"] in
-  Key.(create "cert" Arg.(opt string "tls/server" doc))
+let dns_key =
+  let doc = Key.Arg.info ~doc:"nsupdate key (name:type:value,...)" ["dns-key"] in
+  Key.(create "dns-key" Arg.(required string doc))
+
+let dns_server =
+  let doc = Key.Arg.info ~doc:"dns server IP" ["dns-server"] in
+  Key.(create "dns-server" Arg.(required ipv4_address doc))
+
+let dns_port =
+  let doc = Key.Arg.info ~doc:"dns server port" ["dns-port"] in
+  Key.(create "dns-port" Arg.(opt int 53 doc))
+
+let hostname =
+  let doc = Key.Arg.info ~doc:"hostname" ["hostname"] in
+  Key.(create "hostname" Arg.(required string doc))
+
+let key_seed =
+  let doc = Key.Arg.info ~doc:"certificate key seed" ["key-seed"] in
+  Key.(create "key-seed" Arg.(required string doc))
+
+let keys = Key.[
+    abstract port ; abstract dns_key ; abstract dns_server ; abstract dns_port ;
+    abstract hostname ; abstract key_seed
+  ]
 
 let stack =
   if_impl Key.is_unix
@@ -19,9 +39,8 @@ let stack =
     (static_ipv4_stack ~arp:farp default_network)
 
 let server =
-  let keys = Key.([ abstract port ; abstract cert ]) in
   foreign ~deps:[abstract nocrypto] ~keys "Unikernel.Main" @@
-  pclock @-> stackv4 @-> kv_ro @-> job
+  random @-> pclock @-> time @-> stackv4 @-> kv_ro @-> job
 
 let () =
   let packages = [
@@ -30,6 +49,9 @@ let () =
     package "sexplib" ;
     package ~sublibs:["mirage"] "tls" ;
     package ~sublibs:["lwt"] "logs" ;
+    package ~sublibs:["mirage.certify"] "udns" ;
   ]
   in
-  register ~packages "tls-server" [ server $ default_posix_clock $ stack $ disk ]
+  register ~packages "tls-server" [
+    server $ default_random $ default_posix_clock $ default_time $ stack $ disk
+  ]
