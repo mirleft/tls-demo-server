@@ -270,7 +270,7 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
 
   let start _ pclock _time stack kv _ =
     D.retrieve_certificate stack pclock ~dns_key:(Key_gen.dns_key ())
-      ~hostname:(Key_gen.hostname ()) ~key_seed:(Key_gen.key_seed ())
+      ~hostname:(Domain_name.of_string_exn (Key_gen.hostname ())) ~key_seed:(Key_gen.key_seed ())
       (Key_gen.dns_server ()) (Key_gen.dns_port ()) >>= fun own_cert ->
     let config = Tls.Config.server ~certificates:own_cert () in
     let port = Key_gen.port () in
