@@ -211,7 +211,7 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
     in
     Logs_lwt.info (fun m ->
         m "%a:%d \"%s %s %s\" %d \"%s\" \"%s\""
-          Ipaddr.V4.pp_hum ip port
+          Ipaddr.V4.pp ip port
           (Code.string_of_method request.Request.meth)
           request.Request.resource
           (Code.string_of_version request.Request.version)
@@ -237,7 +237,7 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
        (TLS.reneg tls >>= function
          | Ok () -> dispatch ctx "/diagram.json"
          | Error e ->
-           Logs_lwt.warn (fun m -> m "%a:%d failed renegotation %a" Ipaddr.V4.pp_hum ip port TLS.pp_write_error e) >|= fun () ->
+           Logs_lwt.warn (fun m -> m "%a:%d failed renegotation %a" Ipaddr.V4.pp ip port TLS.pp_write_error e) >|= fun () ->
            (Cohttp.Response.make ~status:`Internal_server_error (), Body.of_string "<html><head>Server Error</head></html>"))
      | "/"      -> dispatch ctx "/index.html"
      | s        -> dispatch ctx s) >>= fun (res, body) ->
@@ -259,10 +259,10 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
     let ip, port = S.TCPV4.dst tcp in
     TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
     | Error e ->
-      Logs_lwt.warn (fun m -> m "%a:%d failed TLS handshake %a" Ipaddr.V4.pp_hum ip port TLS.pp_write_error e)
+      Logs_lwt.warn (fun m -> m "%a:%d failed TLS handshake %a" Ipaddr.V4.pp ip port TLS.pp_write_error e)
     | Ok tls  ->
       (match TLS.epoch tls with
-       | Ok epoch -> Logs_lwt.info (fun m -> m "%a:%d established TLS %s" Ipaddr.V4.pp_hum ip port (tls_epoch_to_line epoch))
+       | Ok epoch -> Logs_lwt.info (fun m -> m "%a:%d established TLS %s" Ipaddr.V4.pp ip port (tls_epoch_to_line epoch))
        | Error () -> Lwt.return_unit) >>= fun () ->
       let ctx = (ip, port, kv, tracer, tls) in
       let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
