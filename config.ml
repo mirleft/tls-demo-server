@@ -33,10 +33,7 @@ let keys = Key.[
     abstract hostname ; abstract key_seed
   ]
 
-let stack =
-  if_impl Key.is_unix
-    (socket_stackv4 [Ipaddr.V4.any])
-    (static_ipv4_stack ~arp:farp default_network)
+let stack = generic_stackv4 default_network
 
 let server =
   foreign ~deps:[abstract nocrypto] ~keys "Unikernel.Main" @@
