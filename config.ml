@@ -36,7 +36,7 @@ let keys = Key.[
 let stack = generic_stackv4 default_network
 
 let logger =
-  syslog_udp ~config:(syslog_config ~truncate:1484 "tls.nqsb.io") stack
+  syslog_udp ~config:(syslog_config "tls.nqsb.io") stack
 
 let server =
   foreign ~deps:[abstract nocrypto ; abstract logger ; abstract app_info] ~keys "Unikernel.Main" @@
@@ -44,6 +44,9 @@ let server =
 
 let () =
   let packages = [
+    package ~min:"0.2.1" "logs-syslog" ;
+    package ~min:"3.7.1" "tcpip" ;
+    package ~min:"2.0.0" "mirage-kv" ;
     package "cohttp-mirage" ;
     package "yojson" ;
     package "sexplib" ;

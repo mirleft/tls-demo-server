@@ -171,16 +171,11 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
                    | "/raphael-min.js" -> "/raphael-min.js"
                    | _ -> "/index.html" )
     in
-    KV.size kv file >>= function
+    KV.get kv (Mirage_kv.Key.v file) >>= function
     | Error e ->
-      Logs_lwt.warn (fun m -> m "failed size of %s: %a" file KV.pp_error e) >>= fun () ->
+      Logs_lwt.warn (fun m -> m "failed get of %s: %a" file KV.pp_error e) >>= fun () ->
       Lwt.fail (Invalid_argument name)
-    | Ok size ->
-      KV.read kv file 0L size >>= function
-      | Error e ->
-        Logs_lwt.warn (fun m -> m "failed read of %s: %a" file KV.pp_error e) >>= fun () ->
-        Lwt.fail (Invalid_argument name)
-      | Ok bufs -> Lwt.return (Cstruct.concat bufs)
+    | Ok data -> Lwt.return data
 
   let content_type path =
     let open String in
@@ -224,7 +219,7 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
         let resp = response path in
         (match path with
          | "/diagram.json" -> Lwt.return (Trace_session.render_traces tracer)
-         | s               -> read_kv kv s >|= Cstruct.to_string) >|= fun data ->
+         | s               -> read_kv kv s) >|= fun data ->
         (resp, (Body.of_string data)))
       (fun _ ->
          Lwt.return (Cohttp.Response.make ~status:`Internal_server_error (),
