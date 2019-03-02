@@ -159,17 +159,16 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
   module Body = Cohttp_lwt.Body
 
   let read_kv kv name =
-    let file = "web" ^
-                 ( match name with
-                   | "/gui.js" -> "/gui.js"
-                   | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
-                   | "/index.html" -> "/index.html"
-                   | "/style.css" -> "/style.css"
-                   | "/html5.js" -> "/html5.js"
-                   | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
-                   | "/underscore-min.js" -> "/underscore-min.js"
-                   | "/raphael-min.js" -> "/raphael-min.js"
-                   | _ -> "/index.html" )
+    let file = match name with
+      | "/gui.js" -> "/gui.js"
+      | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
+      | "/index.html" -> "/index.html"
+      | "/style.css" -> "/style.css"
+      | "/html5.js" -> "/html5.js"
+      | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
+      | "/underscore-min.js" -> "/underscore-min.js"
+      | "/raphael-min.js" -> "/raphael-min.js"
+      | _ -> "/index.html"
     in
     KV.get kv (Mirage_kv.Key.v file) >>= function
     | Error e ->
