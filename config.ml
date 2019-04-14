@@ -52,7 +52,7 @@ let () =
     package "sexplib" ;
     package ~sublibs:["mirage"] "tls" ;
     package ~sublibs:["lwt"] "logs" ;
-    package ~sublibs:["mirage.certify"] "udns" ;
+    package "udns-mirage-certify" ;
   ]
   in
   register ~packages "tls-server" [

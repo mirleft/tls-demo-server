@@ -150,7 +150,7 @@ end
 
 
 module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = struct
-  module D = Dns_mirage_certify.Make(R)(P)(T)(S)
+  module D = Udns_mirage_certify.Make(R)(P)(T)(S)
 
   module TLS  = Tls_mirage.Make (S.TCPV4)
 
@@ -264,13 +264,15 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
 
   let start _ pclock _time stack kv _ _ info =
     D.retrieve_certificate ~ca:`Production
-      stack pclock ~dns_key:(Key_gen.dns_key ())
+      stack ~dns_key:(Key_gen.dns_key ())
       ~hostname:(Domain_name.of_string_exn (Key_gen.hostname ()))
       ~key_seed:(Key_gen.key_seed ())
-      (Key_gen.dns_server ()) (Key_gen.dns_port ()) >>= fun own_cert ->
-    let config = Tls.Config.server ~certificates:own_cert () in
-    let port = Key_gen.port () in
-    Logs.info (fun m -> m "now starting up, listening on %d" port) ;
-    S.listen_tcpv4 stack port (upgrade config kv) ;
-    S.listen stack
+      (Key_gen.dns_server ()) (Key_gen.dns_port ()) >>= function
+    | Error (`Msg m) -> Lwt.fail_with m
+    | Ok own_cert ->
+      let config = Tls.Config.server ~certificates:own_cert () in
+      let port = Key_gen.port () in
+      Logs.info (fun m -> m "now starting up, listening on %d" port) ;
+      S.listen_tcpv4 stack port (upgrade config kv) ;
+      S.listen stack
 end
