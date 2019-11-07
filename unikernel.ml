@@ -1,4 +1,3 @@
-open Mirage_types_lwt
 open Lwt.Infix
 
 module Traces_out = struct
@@ -149,45 +148,39 @@ module Trace_session = struct
 end
 
 
-module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = struct
-  module D = Udns_mirage_certify.Make(R)(P)(T)(S)
-
+module Main (C : Mirage_console.S) (R : Mirage_random.S) (T : Mirage_time.S) (M : Mirage_clock.MCLOCK) (P : Mirage_clock.PCLOCK) (S : Mirage_stack.V4) (KV : Mirage_kv.RO) (Management : Mirage_stack.V4) = struct
   module TLS  = Tls_mirage.Make (S.TCPV4)
 
   module Http = Cohttp_mirage.Server (TLS)
 
   module Body = Cohttp_lwt.Body
 
+  let requested_path = function
+    | "/diagram.json" -> "/diagram.json"
+    | "/gui.js" -> "/gui.js"
+    | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
+    | "/index.html" -> "/index.html"
+    | "/style.css" -> "/style.css"
+    | "/html5.js" -> "/html5.js"
+    | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
+    | "/underscore-min.js" -> "/underscore-min.js"
+    | "/raphael-min.js" -> "/raphael-min.js"
+    | _ -> "/index.html"
+
   let read_kv kv name =
-    let file = match name with
-      | "/gui.js" -> "/gui.js"
-      | "/sequence-diagram-min.js" -> "/sequence-diagram-min.js"
-      | "/index.html" -> "/index.html"
-      | "/style.css" -> "/style.css"
-      | "/html5.js" -> "/html5.js"
-      | "/jquery-1.11.1.min.js" -> "/jquery-1.11.1.min.js"
-      | "/underscore-min.js" -> "/underscore-min.js"
-      | "/raphael-min.js" -> "/raphael-min.js"
-      | _ -> "/index.html"
-    in
-    KV.get kv (Mirage_kv.Key.v file) >>= function
+    KV.get kv (Mirage_kv.Key.v name) >>= function
     | Error e ->
-      Logs_lwt.warn (fun m -> m "failed get of %s: %a" file KV.pp_error e) >>= fun () ->
-      Lwt.fail (Invalid_argument name)
+      Logs.warn (fun m -> m "failed get of %s: %a" name KV.pp_error e);
+      Lwt.return ""
     | Ok data -> Lwt.return data
 
   let content_type path =
-    let open String in
-    try
-      let idx = String.index path '.' + 1 in
-      let rt = String.sub path idx (String.length path - idx) in
-      match rt with
-      | "js" -> "application/javascript"
-      | "css" -> "text/css"
-      | "html" -> "text/html"
-      | "json" -> "application/json"
-      | _ -> "text/plain"
-    with _ -> "text/plain"
+    match Filename.extension path with
+    | ".js" -> "application/javascript"
+    | ".css" -> "text/css"
+    | ".html" -> "text/html"
+    | ".json" -> "application/json"
+    | _ -> "text/plain"
 
   let response path =
     Cohttp.Response.make
@@ -197,82 +190,127 @@ module Main (R : RANDOM) (P : PCLOCK) (T : TIME) (S : STACKV4) (KV : KV_RO) = st
       ; "Connection"   , "Keep-Alive"
       ]) ()
 
-  let log_request ip port request response =
-    let open Cohttp in
-    let sget k = match Header.get request.Request.headers k with
-      | None -> "-"
-      | Some x -> x
-    in
-    Logs_lwt.info (fun m ->
-        m "%a:%d \"%s %s %s\" %d \"%s\" \"%s\""
-          Ipaddr.V4.pp ip port
-          (Code.string_of_method request.Request.meth)
-          request.Request.resource
-          (Code.string_of_version request.Request.version)
-          (Code.code_of_status response.Response.status)
-          (sget "Referer")
-          (sget "User-Agent"))
+  let create ~f =
+    let data : (string, int) Hashtbl.t = Hashtbl.create 7 in
+    (fun x ->
+       let key = f x in
+       let cur = match Hashtbl.find_opt data key with
+         | None -> 0
+         | Some x -> x
+       in
+       Hashtbl.replace data key (succ cur)),
+    (fun () ->
+       let data, total =
+         Hashtbl.fold (fun key value (acc, total) ->
+             (Metrics.uint key value :: acc), value + total)
+           data ([], 0)
+       in
+       Metrics.uint "total" total :: data)
 
-  let dispatch (ip, port, kv, tracer, _) path =
-    Lwt.catch (fun () ->
-        let resp = response path in
-        (match path with
-         | "/diagram.json" -> Lwt.return (Trace_session.render_traces tracer)
-         | s               -> read_kv kv s) >|= fun data ->
-        (resp, (Body.of_string data)))
-      (fun _ ->
-         Lwt.return (Cohttp.Response.make ~status:`Internal_server_error (),
-                     Body.of_string "<html><head>Server Error</head></html>"))
+  let counter_metrics ~f name =
+    let open Metrics in
+    let doc = "Counter metrics" in
+    let incr, get = create ~f in
+    let data thing = incr thing; Data.v (get ()) in
+    Src.v ~doc ~tags:Metrics.Tags.[] ~data name
 
-  let handle (ip, port, _, _, tls as ctx) conn req body =
+  let http_status =
+    let f code = Cohttp.Code.code_of_status code |> string_of_int in
+    counter_metrics ~f "http_response"
+  let http_uri = counter_metrics ~f:(fun x -> x) "http_uri"
+
+  let dispatch kv tracer path =
+    let path' = requested_path path in
+    let resp = response path' in
+    (match path' with
+     | "/diagram.json" -> Lwt.return (Trace_session.render_traces tracer)
+     | s               -> read_kv kv s) >|= fun data ->
+    resp, Body.of_string data
+
+  let access kind =
+    let s = ref (0, 0) in
+    let open Metrics in
+    let doc = "connection statistics" in
+    let data () =
+      Data.v [
+        int "active" (fst !s) ;
+        int "total" (snd !s) ;
+      ] in
+    let tags = Tags.string "kind" in
+    let src = Src.v ~doc ~tags:Tags.[ tags ] ~data "connections" in
+    (fun action ->
+       (match action with
+        | `Open -> s := (succ (fst !s), succ (snd !s))
+        | `Close -> s := (pred (fst !s), snd !s));
+       Metrics.add src (fun x -> x kind) (fun d -> d ()))
+
+  let rekey_access = access "tls-rekey"
+
+  let handle kv tracer tls _conn req _body =
     let path = req.Cohttp.Request.resource in
     (match path with
      | "/rekey" ->
+       rekey_access `Open;
        (TLS.reneg tls >>= function
-         | Ok () -> dispatch ctx "/diagram.json"
+         | Ok () -> rekey_access `Close ; dispatch kv tracer "/diagram.json"
          | Error e ->
-           Logs_lwt.warn (fun m -> m "%a:%d failed renegotation %a" Ipaddr.V4.pp ip port TLS.pp_write_error e) >|= fun () ->
-           (Cohttp.Response.make ~status:`Internal_server_error (), Body.of_string "<html><head>Server Error</head></html>"))
-     | "/"      -> dispatch ctx "/index.html"
-     | s        -> dispatch ctx s) >>= fun (res, body) ->
-    log_request ip port req res >|= fun () ->
+           rekey_access `Close;
+           Logs.warn (fun m -> m "failed renegotation %a" TLS.pp_write_error e);
+           Lwt.return (Cohttp.Response.make ~status:`Internal_server_error (),
+                       Body.of_string "<html><head>Server Error</head></html>"))
+     | s -> dispatch kv tracer s) >|= fun (res, body) ->
+    Metrics.add http_status (fun x -> x) (fun d -> d res.Cohttp.Response.status);
+    Metrics.add http_uri (fun x -> x) (fun d -> d path);
     (res, body)
 
-
-  let tls_epoch_to_line epoch =
-    let open Tls in
-    let version = epoch.Core.protocol_version
-    and cipher = epoch.Core.ciphersuite
-    in
-    Sexplib.Sexp.(to_string_hum (List [
-        Core.sexp_of_tls_version version ;
-        Ciphersuite.sexp_of_ciphersuite cipher ]))
+  let tcp_access = access "tcp"
+  let tls_access = access "tls"
 
   let upgrade conf kv tcp =
+    tcp_access `Open;
     let tracer = Trace_session.create () in
-    let ip, port = S.TCPV4.dst tcp in
     TLS.server_of_flow ~trace:(Trace_session.trace tracer) conf tcp >>= function
     | Error e ->
-      Logs_lwt.warn (fun m -> m "%a:%d failed TLS handshake %a" Ipaddr.V4.pp ip port TLS.pp_write_error e)
+      tcp_access `Close;
+      Logs_lwt.warn (fun m -> m "failed TLS handshake %a" TLS.pp_write_error e)
     | Ok tls  ->
-      (match TLS.epoch tls with
-       | Ok epoch -> Logs_lwt.info (fun m -> m "%a:%d established TLS %s" Ipaddr.V4.pp ip port (tls_epoch_to_line epoch))
-       | Error () -> Lwt.return_unit) >>= fun () ->
-      let ctx = (ip, port, kv, tracer, tls) in
-      let thing = Http.make ~callback:(handle ctx) ~conn_closed:(fun _ -> ()) () in
+      tls_access `Open;
+      let thing =
+        Http.make ~callback:(handle kv tracer tls)
+          ~conn_closed:(fun _ -> tcp_access `Close ; tls_access `Close) ()
+      in
       Http.listen thing tls
 
-  let start _ pclock _time stack kv _ _ info =
+  module D = Dns_certify_mirage.Make(R)(P)(T)(S)
+
+  module Monitoring = Monitoring_experiments.Make(T)(Management)
+  module Syslog = Logs_syslog_mirage.Udp(C)(P)(Management)
+
+  let start c _random _time _mclock _pclock stack kv management _ info =
+    let hostname = Key_gen.name ()
+    and syslog = Key_gen.syslog ()
+    and monitor = Key_gen.monitor ()
+    in
+    if Ipaddr.V4.compare syslog Ipaddr.V4.unspecified = 0 then
+      Logs.warn (fun m -> m "no syslog specified, dumping on stdout")
+    else
+      Logs.set_reporter (Syslog.create c management syslog ~hostname ());
+    if Ipaddr.V4.compare monitor Ipaddr.V4.unspecified = 0 then
+      Logs.warn (fun m -> m "no monitor specified, not outputting statistics")
+    else
+      Monitoring.create ~hostname monitor management;
+    List.iter (fun (p, v) -> Logs.app (fun m -> m "used package: %s %s" p v))
+      info.Mirage_info.packages;
+    let hostname = Domain_name.(hostname |> of_string_exn |> host_exn) in
     D.retrieve_certificate ~ca:`Production
       stack ~dns_key:(Key_gen.dns_key ())
-      ~hostname:(Domain_name.of_string_exn (Key_gen.hostname ()))
-      ~key_seed:(Key_gen.key_seed ())
+      ~hostname ~key_seed:(Key_gen.key_seed ())
       (Key_gen.dns_server ()) (Key_gen.dns_port ()) >>= function
     | Error (`Msg m) -> Lwt.fail_with m
     | Ok own_cert ->
-      let config = Tls.Config.server ~certificates:own_cert () in
+      let config = Tls.Config.server ~reneg:true ~certificates:own_cert () in
       let port = Key_gen.port () in
       Logs.info (fun m -> m "now starting up, listening on %d" port) ;
-      S.listen_tcpv4 stack port (upgrade config kv) ;
+      S.listen_tcpv4 stack ~port (upgrade config kv) ;
       S.listen stack
 end
