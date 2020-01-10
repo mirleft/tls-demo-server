@@ -190,34 +190,16 @@ module Main (C : Mirage_console.S) (R : Mirage_random.S) (T : Mirage_time.S) (M 
       ; "Connection"   , "Keep-Alive"
       ]) ()
 
-  let create ~f =
-    let data : (string, int) Hashtbl.t = Hashtbl.create 7 in
-    (fun x ->
-       let key = f x in
-       let cur = match Hashtbl.find_opt data key with
-         | None -> 0
-         | Some x -> x
-       in
-       Hashtbl.replace data key (succ cur)),
-    (fun () ->
-       let data, total =
-         Hashtbl.fold (fun key value (acc, total) ->
-             (Metrics.uint key value :: acc), value + total)
-           data ([], 0)
-       in
-       Metrics.uint "total" total :: data)
-
-  let counter_metrics ~f name =
-    let open Metrics in
-    let doc = "Counter metrics" in
-    let incr, get = create ~f in
-    let data thing = incr thing; Data.v (get ()) in
-    Src.v ~doc ~tags:Metrics.Tags.[] ~data name
-
   let http_status =
-    let f code = Cohttp.Code.code_of_status code |> string_of_int in
-    counter_metrics ~f "http_response"
-  let http_uri = counter_metrics ~f:(fun x -> x) "http_uri"
+    let f = function
+      | #Cohttp.Code.informational_status -> "1xx"
+      | #Cohttp.Code.success_status -> "2xx"
+      | #Cohttp.Code.redirection_status -> "3xx"
+      | #Cohttp.Code.client_error_status -> "4xx"
+      | #Cohttp.Code.server_error_status -> "5xx"
+      | `Code c -> Printf.sprintf "%dxx" (c / 100)
+    in
+    Monitoring_experiments.counter_metrics ~f "http_response"
 
   let dispatch kv tracer path =
     let path' = requested_path path in
@@ -260,7 +242,6 @@ module Main (C : Mirage_console.S) (R : Mirage_random.S) (T : Mirage_time.S) (M 
                        Body.of_string "<html><head>Server Error</head></html>"))
      | s -> dispatch kv tracer s) >|= fun (res, body) ->
     Metrics.add http_status (fun x -> x) (fun d -> d res.Cohttp.Response.status);
-    Metrics.add http_uri (fun x -> x) (fun d -> d path);
     (res, body)
 
   let tcp_access = access "tcp"
@@ -282,7 +263,6 @@ module Main (C : Mirage_console.S) (R : Mirage_random.S) (T : Mirage_time.S) (M 
       Http.listen thing tls
 
   module D = Dns_certify_mirage.Make(R)(P)(T)(S)
-
   module Monitoring = Monitoring_experiments.Make(T)(Management)
   module Syslog = Logs_syslog_mirage.Udp(C)(P)(Management)
 
